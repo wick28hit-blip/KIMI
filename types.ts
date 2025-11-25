@@ -1,14 +1,15 @@
+
 export interface UserProfile {
   name: string;
   age?: number;
   isProfessional: boolean;
   pin: string; // Hashed in a real app, keeping simple for demo logic
   habits: {
-    smoking: boolean;
-    alcohol: boolean;
-    sleep: boolean; // true = good, false = irregular
-    stress: boolean; // true = high
-    exercise: boolean;
+    smoking: { value: boolean; frequency?: string };
+    alcohol: { value: boolean; frequency?: string; amount?: string };
+    sleep: { value: boolean }; // true = good (7-9h), false = irregular
+    stress: { value: boolean }; // true = high, false = managed
+    exercise: { value: boolean; frequency?: string; type?: string };
   };
 }
 
@@ -28,7 +29,7 @@ export interface DailyLog {
 }
 
 export interface AppState {
-  view: 'BOOT' | 'ONBOARDING' | 'PIN' | 'HOME' | 'CALENDAR' | 'DAILY_LOG' | 'INSIGHTS' | 'SETTINGS';
+  view: 'BOOT' | 'ONBOARDING' | 'PIN' | 'HOME' | 'CALENDAR' | 'DAILY_LOG' | 'INSIGHTS' | 'SETTINGS' | 'VAULT_PIN' | 'SECRET_VAULT';
   user: UserProfile | null;
   cycle: CycleData | null;
   logs: Record<string, DailyLog>;

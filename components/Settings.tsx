@@ -1,5 +1,7 @@
-import React, { useRef } from 'react';
-import { Bell, Moon, Shield, Download, Upload, Trash2, ChevronRight, Lock, Sun, LogOut } from 'lucide-react';
+
+import React, { useRef, useState } from 'react';
+import { Bell, Moon, Shield, Download, Upload, Trash2, ChevronRight, Lock, Sun, LogOut, FileText, X } from 'lucide-react';
+import { UserProfile } from '../types';
 
 interface SettingsProps {
   onExport: () => void;
@@ -8,6 +10,10 @@ interface SettingsProps {
   isDarkMode: boolean;
   onToggleDarkMode: () => void;
   onLogout: () => void;
+  onOpenSecretVault: () => void;
+  user?: UserProfile | null;
+  onUpdateUser?: (user: UserProfile) => void;
+  isVaultView?: boolean;
 }
 
 const Settings: React.FC<SettingsProps> = ({ 
@@ -16,9 +22,17 @@ const Settings: React.FC<SettingsProps> = ({
   onDeleteData, 
   isDarkMode, 
   onToggleDarkMode,
-  onLogout
+  onLogout,
+  onOpenSecretVault,
+  user,
+  onUpdateUser,
+  isVaultView = false
 }) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
+  
+  // Vault Editing States
+  const [editingHabit, setEditingHabit] = useState<string | null>(null);
+  const [tempValue, setTempValue] = useState('');
 
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -26,6 +40,92 @@ const Settings: React.FC<SettingsProps> = ({
       onImport(file);
     }
   };
+
+  const handleSaveHabit = (key: string) => {
+    if (user && onUpdateUser) {
+        const updatedHabits = { ...user.habits };
+        // @ts-ignore
+        if (updatedHabits[key]) {
+             // @ts-ignore
+            updatedHabits[key] = { ...updatedHabits[key], frequency: tempValue };
+        }
+        onUpdateUser({ ...user, habits: updatedHabits });
+        setEditingHabit(null);
+    }
+  };
+
+  // --- SECRET VAULT VIEW ---
+  if (isVaultView && user) {
+    return (
+        <div className="flex flex-col h-full bg-[#111827] text-white p-6 overflow-y-auto pb-32">
+            <header className="flex items-center gap-4 mb-8">
+                <button onClick={onOpenSecretVault} className="p-2 bg-gray-800 rounded-full">
+                    <ChevronRight className="rotate-180" />
+                </button>
+                <h1 className="text-2xl font-bold flex items-center gap-2">
+                    <Shield className="text-[#E84C7C]" /> Secret Vault
+                </h1>
+            </header>
+
+            <p className="text-gray-400 mb-6 text-sm">
+                Your sensitive habit data is encrypted here. You can update details below.
+            </p>
+
+            <div className="space-y-4">
+                {Object.entries(user.habits).map(([key, data]: [string, any]) => (
+                    <div key={key} className="bg-gray-800 p-4 rounded-xl border border-gray-700">
+                        <div className="flex justify-between items-start mb-2">
+                            <h3 className="capitalize font-bold text-lg text-pink-400">{key}</h3>
+                            <span className={`px-2 py-1 rounded text-xs font-bold ${data.value ? 'bg-green-900 text-green-300' : 'bg-red-900 text-red-300'}`}>
+                                {data.value ? 'YES' : 'NO'}
+                            </span>
+                        </div>
+                        
+                        {data.value && (
+                            <div className="mt-2">
+                                {editingHabit === key ? (
+                                    <div className="flex gap-2">
+                                        <input 
+                                            autoFocus
+                                            type="text" 
+                                            className="flex-1 bg-gray-900 border border-gray-600 rounded p-2 text-sm"
+                                            value={tempValue}
+                                            onChange={(e) => setTempValue(e.target.value)}
+                                            placeholder="Frequency/Details..."
+                                        />
+                                        <button onClick={() => handleSaveHabit(key)} className="bg-green-600 p-2 rounded"><CheckIcon /></button>
+                                        <button onClick={() => setEditingHabit(null)} className="bg-gray-700 p-2 rounded"><X size={16}/></button>
+                                    </div>
+                                ) : (
+                                    <div className="flex justify-between items-center text-sm text-gray-300 bg-gray-900/50 p-2 rounded">
+                                        <span>{data.frequency || data.amount || 'Not specified'}</span>
+                                        <button 
+                                            onClick={() => {
+                                                setEditingHabit(key);
+                                                setTempValue(data.frequency || data.amount || '');
+                                            }}
+                                            className="text-[#E84C7C] font-medium text-xs underline"
+                                        >
+                                            Edit
+                                        </button>
+                                    </div>
+                                )}
+                            </div>
+                        )}
+                    </div>
+                ))}
+            </div>
+            
+            <div className="mt-8 p-4 bg-yellow-900/20 border border-yellow-900/50 rounded-xl">
+                 <p className="text-yellow-500 text-xs">
+                    🔒 This area is secured. Navigating away will lock it again.
+                 </p>
+            </div>
+        </div>
+    );
+  }
+
+  // --- STANDARD SETTINGS VIEW ---
 
   return (
     <div className="flex flex-col h-full bg-[#FFF0F3] dark:bg-gray-900 p-6 overflow-y-auto no-scrollbar pb-32 transition-colors duration-300">
@@ -36,26 +136,32 @@ const Settings: React.FC<SettingsProps> = ({
         </button>
       </header>
 
+      {/* Secret Vault Entry */}
+      <button 
+        onClick={onOpenSecretVault}
+        className="w-full bg-gradient-to-r from-gray-800 to-gray-900 dark:from-gray-700 dark:to-gray-800 rounded-2xl shadow-lg p-5 mb-6 flex items-center justify-between group active:scale-95 transition-all"
+      >
+         <div className="flex items-center gap-4">
+            <div className="p-3 bg-gray-700 rounded-full text-[#E84C7C] border border-gray-600">
+                <Shield size={24} />
+            </div>
+            <div className="text-left">
+                <h3 className="font-bold text-white text-lg group-hover:text-[#E84C7C] transition-colors">Secret Vault</h3>
+                <p className="text-gray-400 text-xs">Encrypted Habits & Logs</p>
+            </div>
+         </div>
+         <Lock className="text-gray-500 group-hover:text-white transition-colors" />
+      </button>
+
       {/* Privacy & Security */}
       <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm p-2 mb-6 border border-pink-50 dark:border-gray-700 transition-colors">
         <div className="p-4 border-b border-gray-50 dark:border-gray-700 flex items-center gap-3">
-          <Shield className="text-[#E84C7C]" size={20} />
+          <FileText className="text-[#E84C7C]" size={20} />
           <div className="flex-1">
-            <h3 className="font-semibold text-gray-800 dark:text-gray-100">Privacy & Security</h3>
-            <p className="text-xs text-gray-500 dark:text-gray-400">Your data is stored locally and encrypted</p>
+            <h3 className="font-semibold text-gray-800 dark:text-gray-100">Data Management</h3>
           </div>
         </div>
         
-        <div className="p-4 flex items-center justify-between">
-          <div className="flex items-center gap-3 text-gray-600 dark:text-gray-300">
-            <Lock size={18} />
-            <span className="text-sm font-medium">PIN Lock</span>
-          </div>
-          <div className="w-11 h-6 bg-[#E84C7C] rounded-full relative cursor-pointer">
-            <div className="absolute right-1 top-1 w-4 h-4 bg-white rounded-full shadow-sm" />
-          </div>
-        </div>
-
         <button 
           onClick={onExport}
           className="w-full p-4 flex items-center justify-between hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors text-left"
@@ -110,7 +216,6 @@ const Settings: React.FC<SettingsProps> = ({
             <Bell size={18} />
             <span className="text-sm font-medium">Notifications</span>
           </div>
-          {/* Mock Toggle - Active */}
           <div className="w-11 h-6 bg-[#E84C7C] rounded-full relative cursor-pointer">
             <div className="absolute right-1 top-1 w-4 h-4 bg-white rounded-full shadow-sm" />
           </div>
@@ -143,5 +248,10 @@ const Settings: React.FC<SettingsProps> = ({
     </div>
   );
 };
+
+// Helper Icon
+const CheckIcon = () => (
+    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" className="text-white"><polyline points="20 6 9 17 4 12"></polyline></svg>
+)
 
 export default Settings;

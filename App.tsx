@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { UserProfile, CycleData, AppState, DailyLog } from './types';
 import { STORAGE_KEY, HAS_ACCOUNT_KEY, encryptData, decryptData } from './utils/crypto';
@@ -66,6 +67,17 @@ const App: React.FC = () => {
   };
 
   const handleLogin = (pin: string) => {
+    // Determine context: Initial login vs Vault unlock
+    if (state.view === 'VAULT_PIN') {
+       if (state.user && state.user.pin === pin) {
+         setLoginError(false);
+         setState(s => ({ ...s, view: 'SECRET_VAULT' }));
+       } else {
+         setLoginError(true);
+       }
+       return;
+    }
+
     const encryptedData = localStorage.getItem(STORAGE_KEY);
     if (encryptedData) {
       const data = decryptData(encryptedData, pin);
@@ -134,6 +146,16 @@ const App: React.FC = () => {
     if (state.user) {
       const encrypted = encryptData(newState, state.user.pin);
       localStorage.setItem(STORAGE_KEY, encrypted);
+    }
+    setState(newState);
+  };
+
+  const handleUpdateUser = (updatedUser: UserProfile) => {
+    const newState = { ...state, user: updatedUser };
+    if (state.user) {
+        // Re-encrypt everything with the updated user data (and existing PIN)
+        const encrypted = encryptData(newState, state.user.pin);
+        localStorage.setItem(STORAGE_KEY, encrypted);
     }
     setState(newState);
   };
@@ -213,14 +235,15 @@ const App: React.FC = () => {
   if (state.view === 'BOOT') return <div className="min-h-screen bg-[#FFF0F3] dark:bg-gray-900" />;
   if (state.view === 'ONBOARDING') return <Onboarding onComplete={handleSignup} />;
   
-  if (state.view === 'PIN') {
+  if (state.view === 'PIN' || state.view === 'VAULT_PIN') {
     return (
       <PinLock 
         onSuccess={handleLogin} 
         expectedPin={state.user?.pin} // This will be undefined on cold boot/logout, forcing parent validation
-        onReset={handleReset} 
+        onReset={state.view === 'PIN' ? handleReset : undefined} // Only allow reset on main login
         loginError={loginError}
         onClearLoginError={() => setLoginError(false)}
+        isSetup={false}
       />
     );
   }
@@ -381,7 +404,7 @@ const App: React.FC = () => {
         {state.view === 'CALENDAR' && renderCalendar()}
         {state.view === 'DAILY_LOG' && renderDailyLog()}
         {state.view === 'INSIGHTS' && renderInsights()}
-        {state.view === 'SETTINGS' && (
+        {(state.view === 'SETTINGS' || state.view === 'SECRET_VAULT') && (
             <Settings 
                 onExport={handleExportData}
                 onImport={handleImportData}
@@ -389,6 +412,16 @@ const App: React.FC = () => {
                 isDarkMode={state.darkMode}
                 onToggleDarkMode={toggleDarkMode}
                 onLogout={handleLogout}
+                onOpenSecretVault={() => {
+                    if (state.view === 'SECRET_VAULT') {
+                        setState(s => ({...s, view: 'SETTINGS'}));
+                    } else {
+                        setState(s => ({...s, view: 'VAULT_PIN'}));
+                    }
+                }}
+                isVaultView={state.view === 'SECRET_VAULT'}
+                user={state.user}
+                onUpdateUser={handleUpdateUser}
             />
         )}
       </main>
@@ -420,50 +453,54 @@ const App: React.FC = () => {
       )}
 
       {/* Bottom Nav */}
-      <nav className="absolute bottom-0 left-0 w-full bg-white dark:bg-gray-800 border-t border-pink-100 dark:border-gray-700 flex justify-between px-2 py-3 pb-6 z-50 rounded-t-3xl shadow-[0_-5px_20px_rgba(232,76,124,0.1)] transition-colors">
-        <button 
-          onClick={() => setState(s => ({...s, view: 'HOME'}))}
-          className={`flex-1 flex flex-col items-center gap-1 transition-colors ${state.view === 'HOME' ? 'text-[#E84C7C]' : 'text-gray-400 dark:text-gray-500'}`}
-        >
-          <Home size={22} />
-          <span className="text-[10px] font-medium">Home</span>
-        </button>
-        <button 
-          onClick={() => setState(s => ({...s, view: 'CALENDAR'}))}
-          className={`flex-1 flex flex-col items-center gap-1 transition-colors ${state.view === 'CALENDAR' ? 'text-[#E84C7C]' : 'text-gray-400 dark:text-gray-500'}`}
-        >
-          <Calendar size={22} />
-          <span className="text-[10px] font-medium">Calendar</span>
-        </button>
-        
-        {/* Spacer for FAB */}
-        <div className="w-16" /> 
+      {(state.view !== 'SECRET_VAULT') && (
+        <nav className="absolute bottom-0 left-0 w-full bg-white dark:bg-gray-800 border-t border-pink-100 dark:border-gray-700 flex justify-between px-2 py-3 pb-6 z-50 rounded-t-3xl shadow-[0_-5px_20px_rgba(232,76,124,0.1)] transition-colors">
+            <button 
+            onClick={() => setState(s => ({...s, view: 'HOME'}))}
+            className={`flex-1 flex flex-col items-center gap-1 transition-colors ${state.view === 'HOME' ? 'text-[#E84C7C]' : 'text-gray-400 dark:text-gray-500'}`}
+            >
+            <Home size={22} />
+            <span className="text-[10px] font-medium">Home</span>
+            </button>
+            <button 
+            onClick={() => setState(s => ({...s, view: 'CALENDAR'}))}
+            className={`flex-1 flex flex-col items-center gap-1 transition-colors ${state.view === 'CALENDAR' ? 'text-[#E84C7C]' : 'text-gray-400 dark:text-gray-500'}`}
+            >
+            <Calendar size={22} />
+            <span className="text-[10px] font-medium">Calendar</span>
+            </button>
+            
+            {/* Spacer for FAB */}
+            <div className="w-16" /> 
 
-        <button 
-          onClick={() => setState(s => ({...s, view: 'INSIGHTS'}))}
-          className={`flex-1 flex flex-col items-center gap-1 transition-colors ${state.view === 'INSIGHTS' ? 'text-[#E84C7C]' : 'text-gray-400 dark:text-gray-500'}`}
-        >
-          <BarChart2 size={22} />
-          <span className="text-[10px] font-medium">Insights</span>
-        </button>
-        <button 
-          onClick={() => setState(s => ({...s, view: 'SETTINGS'}))}
-          className={`flex-1 flex flex-col items-center gap-1 transition-colors ${state.view === 'SETTINGS' ? 'text-[#E84C7C]' : 'text-gray-400 dark:text-gray-500'}`}
-        >
-          <SettingsIcon size={22} />
-          <span className="text-[10px] font-medium">Settings</span>
-        </button>
-      </nav>
+            <button 
+            onClick={() => setState(s => ({...s, view: 'INSIGHTS'}))}
+            className={`flex-1 flex flex-col items-center gap-1 transition-colors ${state.view === 'INSIGHTS' ? 'text-[#E84C7C]' : 'text-gray-400 dark:text-gray-500'}`}
+            >
+            <BarChart2 size={22} />
+            <span className="text-[10px] font-medium">Insights</span>
+            </button>
+            <button 
+            onClick={() => setState(s => ({...s, view: 'SETTINGS'}))}
+            className={`flex-1 flex flex-col items-center gap-1 transition-colors ${state.view === 'SETTINGS' ? 'text-[#E84C7C]' : 'text-gray-400 dark:text-gray-500'}`}
+            >
+            <SettingsIcon size={22} />
+            <span className="text-[10px] font-medium">Settings</span>
+            </button>
+        </nav>
+      )}
 
       {/* FAB */}
-      <div className="absolute bottom-8 left-1/2 -translate-x-1/2 z-50">
-        <button 
-          onClick={() => setState(s => ({...s, view: 'DAILY_LOG'}))}
-          className={`w-14 h-14 rounded-full shadow-lg flex items-center justify-center text-white active:scale-95 transition-transform border-4 border-[#FFF0F3] dark:border-gray-900 ${state.view === 'DAILY_LOG' ? 'bg-[#2D2D2D] dark:bg-gray-600' : 'bg-[#E84C7C] shadow-pink-300 dark:shadow-none'}`}
-        >
-          <PlusCircle size={28} />
-        </button>
-      </div>
+      {(state.view !== 'SECRET_VAULT') && (
+        <div className="absolute bottom-8 left-1/2 -translate-x-1/2 z-50">
+            <button 
+            onClick={() => setState(s => ({...s, view: 'DAILY_LOG'}))}
+            className={`w-14 h-14 rounded-full shadow-lg flex items-center justify-center text-white active:scale-95 transition-transform border-4 border-[#FFF0F3] dark:border-gray-900 ${state.view === 'DAILY_LOG' ? 'bg-[#2D2D2D] dark:bg-gray-600' : 'bg-[#E84C7C] shadow-pink-300 dark:shadow-none'}`}
+            >
+            <PlusCircle size={28} />
+            </button>
+        </div>
+      )}
 
     </div>
   );

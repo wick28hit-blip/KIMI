@@ -1,19 +1,27 @@
+
 import { GoogleGenAI } from "@google/genai";
 import { UserProfile, CycleData, DailyLog } from "../types";
 
 // NOTE: In a real app, never expose API keys on the client. 
 // This should go through a proxy server. 
 // For this demo, we assume process.env.API_KEY is available.
-const API_KEY = process.env.API_KEY || '';
 
-const ai = new GoogleGenAI({ apiKey: API_KEY });
+const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 
 export const getWellnessInsight = async (
   user: UserProfile, 
   cycle: CycleData, 
   todaysLog: DailyLog
 ): Promise<string> => {
-  if (!API_KEY) return "AI insights are unavailable without an API Key.";
+  if (!process.env.API_KEY) return "AI insights are unavailable without an API Key.";
+
+  // Format habit details for the prompt
+  const habits = user.habits;
+  const sleepStatus = habits.sleep.value ? 'Good (Regular)' : 'Irregular';
+  const stressStatus = habits.stress.value ? 'High' : 'Low/Managed';
+  const smokingInfo = habits.smoking.value ? `Yes (${habits.smoking.frequency})` : 'No';
+  const alcoholInfo = habits.alcohol.value ? `Yes (${habits.alcohol.frequency})` : 'No';
+  const exerciseInfo = habits.exercise.value ? `Active (${habits.exercise.frequency})` : 'Sedentary';
 
   const prompt = `
     You are a helpful, empathetic period tracking assistant named KIMI.
@@ -22,7 +30,11 @@ export const getWellnessInsight = async (
     
     User Profile:
     - Professional: ${user.isProfessional ? 'Yes' : 'No'}
-    - Habits: Sleep: ${user.habits.sleep ? 'Good' : 'Irregular'}, Stress: ${user.habits.stress ? 'High' : 'Low'}
+    - Sleep: ${sleepStatus}
+    - Stress: ${stressStatus}
+    - Smoking: ${smokingInfo}
+    - Alcohol: ${alcoholInfo}
+    - Exercise: ${exerciseInfo}
     
     Cycle Status:
     - Cycle Length: ${cycle.cycleLength} days
@@ -46,3 +58,4 @@ export const getWellnessInsight = async (
     return "Unable to generate insights right now. Remember to drink water!";
   }
 };
+    
