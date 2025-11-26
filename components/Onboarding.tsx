@@ -1,4 +1,3 @@
-
 import React, { useState, useRef } from 'react';
 import { ArrowRight, Calendar, User, Briefcase, Moon, Cigarette, Wine, Activity, ChevronLeft, Check, X, Dumbbell } from 'lucide-react';
 import { UserProfile, CycleData } from '../types';
@@ -353,7 +352,9 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
               const cycle: CycleData = {
                 lastPeriodDate: format(pickerDate, 'yyyy-MM-dd'),
                 cycleLength, 
-                periodDuration
+                periodDuration,
+                history: [],
+                lifestyleOffset: 0
               };
               onComplete(user, cycle);
             }} 

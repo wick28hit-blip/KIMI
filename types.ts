@@ -13,10 +13,18 @@ export interface UserProfile {
   };
 }
 
+export interface CycleHistory {
+  startDate: string;
+  endDate: string;
+  isConfirmed: boolean;
+}
+
 export interface CycleData {
   lastPeriodDate: string; // ISO Date string
   cycleLength: number;
   periodDuration: number;
+  history: CycleHistory[]; // Past 3 months calibration + confirmed cycles
+  lifestyleOffset: number; // Calculated impact in days
 }
 
 export interface DailyLog {
@@ -24,8 +32,23 @@ export interface DailyLog {
   waterIntake: number; // glasses
   mood?: 'happy' | 'neutral' | 'sad' | 'anxious' | 'energetic';
   symptoms: string[];
-  intimacy?: 'protected' | 'unprotected' | 'none';
+  intimacy?: 'protected' | 'unprotected' | 'prefer_not_to_say' | 'none';
   notes?: string;
+  
+  // New Fields
+  habits?: {
+    smoked?: { value: boolean; amount?: string }; // amount e.g. "5 cigarettes"
+    alcohol?: { value: boolean; units?: string }; // units e.g. "2 glasses"
+  };
+  medication?: {
+    taken: boolean;
+    types: string[]; // ['Painkillers', 'Antibiotics', 'Hormonal']
+  };
+  exercise?: {
+    performed: boolean;
+    type?: 'Cardio' | 'Strength' | 'Yoga' | 'None';
+    duration?: number; // minutes
+  };
 }
 
 export interface AppState {

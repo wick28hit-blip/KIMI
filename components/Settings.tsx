@@ -1,6 +1,6 @@
 
 import React, { useRef, useState } from 'react';
-import { Bell, Moon, Shield, Download, Upload, Trash2, ChevronRight, Lock, Sun, LogOut, FileText, X } from 'lucide-react';
+import { Bell, Moon, Shield, Download, Upload, Trash2, ChevronRight, Lock, Sun, LogOut, FileText, X, Info } from 'lucide-react';
 import { UserProfile } from '../types';
 
 interface SettingsProps {
@@ -230,6 +230,21 @@ const Settings: React.FC<SettingsProps> = ({
         <LogOut size={18} />
         <span className="font-medium">Log Out</span>
       </button>
+
+      {/* Legal & Disclaimer */}
+      <div className="mb-8 px-1">
+         <h4 className="text-xs font-bold text-gray-400 dark:text-gray-500 uppercase mb-3 tracking-wider ml-1">Legal & Privacy</h4>
+         <div className="bg-white/50 dark:bg-gray-800/50 rounded-xl p-4 border border-pink-50 dark:border-gray-700/50 text-xs text-gray-500 dark:text-gray-400 space-y-4">
+            <div>
+               <p className="font-bold text-gray-600 dark:text-gray-300 mb-1 flex items-center gap-1"><Info size={12}/> Medical Disclaimer</p>
+               <p>KIMI is for tracking purposes only. Not a substitute for medical advice. Consult healthcare provider for concerns.</p>
+            </div>
+            <div>
+               <p className="font-bold text-gray-600 dark:text-gray-300 mb-1 flex items-center gap-1"><Shield size={12}/> Privacy Policy</p>
+               <p>All data stays on your device. KIMI never collects, transmits, or shares your personal information. You own your data completely.</p>
+            </div>
+         </div>
+      </div>
 
       {/* Danger Zone */}
       <div className="border-2 border-red-100 dark:border-red-900/30 bg-red-50/50 dark:bg-red-900/10 rounded-2xl p-4 mt-auto">
