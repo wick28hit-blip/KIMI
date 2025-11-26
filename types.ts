@@ -1,14 +1,13 @@
-
 export interface UserProfile {
   name: string;
   age?: number;
   isProfessional: boolean;
-  pin: string; // Hashed in a real app, keeping simple for demo logic
+  pin: string;
   habits: {
     smoking: { value: boolean; frequency?: string };
     alcohol: { value: boolean; frequency?: string; amount?: string };
-    sleep: { value: boolean }; // true = good (7-9h), false = irregular
-    stress: { value: boolean }; // true = high, false = managed
+    sleep: { value: boolean }; 
+    stress: { value: boolean };
     exercise: { value: boolean; frequency?: string; type?: string };
   };
 }
@@ -17,14 +16,14 @@ export interface CycleHistory {
   startDate: string;
   endDate: string;
   isConfirmed: boolean;
-  lifestyleImpact?: number; // Recorded shift factor for volatility calc
+  lifestyleImpact?: number;
 }
 
 export interface PredictionWindow {
   start: Date;
   end: Date;
-  accuracyDays: number; // +/- days
-  confidence: number; // 0.0 - 1.0
+  accuracyDays: number;
+  confidence: number;
 }
 
 export interface PredictionResult {
@@ -39,43 +38,35 @@ export interface PredictionResult {
 }
 
 export interface CycleData {
-  lastPeriodDate: string; // ISO Date string
+  lastPeriodDate: string;
   cycleLength: number;
   periodDuration: number;
-  history: CycleHistory[]; // Past 3 months calibration + confirmed cycles
-  lifestyleOffset: number; // Calculated impact in days
-  
-  // Adaptive & Variance Fields
+  history: CycleHistory[];
+  lifestyleOffset: number;
   adaptiveWeight?: number; 
   confidenceScore?: number;
   varianceOffset?: number;
-  
-  // Cached metrics
-  lastVariance?: number;
-  lastVolatility?: number;
 }
 
 export interface DailyLog {
-  date: string; // YYYY-MM-DD
-  waterIntake: number; // glasses
+  date: string;
+  waterIntake: number;
   mood?: 'happy' | 'neutral' | 'sad' | 'anxious' | 'energetic';
   symptoms: string[];
   intimacy?: 'protected' | 'unprotected' | 'prefer_not_to_say' | 'none';
   notes?: string;
-  
-  // New Fields
   habits?: {
-    smoked?: { value: boolean; amount?: string }; // amount e.g. "5 cigarettes"
-    alcohol?: { value: boolean; units?: string }; // units e.g. "2 glasses"
+    smoked?: { value: boolean; amount?: string };
+    alcohol?: { value: boolean; units?: string };
   };
   medication?: {
     taken: boolean;
-    types: string[]; // ['Painkillers', 'Antibiotics', 'Hormonal']
+    types: string[];
   };
   exercise?: {
     performed: boolean;
     type?: 'Cardio' | 'Strength' | 'Yoga' | 'None';
-    duration?: number; // minutes
+    duration?: number;
   };
 }
 
@@ -85,13 +76,4 @@ export interface AppState {
   cycle: CycleData | null;
   logs: Record<string, DailyLog>;
   darkMode: boolean;
-}
-
-export enum Colors {
-  Primary = '#E84C7C',
-  Secondary = '#F47B9C',
-  Background = '#FFF0F3',
-  Surface = '#FFF9F5',
-  Accent = '#7B86CB',
-  Text = '#2D2D2D',
 }

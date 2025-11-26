@@ -1,4 +1,5 @@
-import React, { useRef, useEffect, UIEvent } from 'react';
+import React, { useRef, useEffect, useState } from 'react';
+import { View, Text, ScrollView, StyleSheet, NativeSyntheticEvent, NativeScrollEvent } from 'react-native';
 
 interface ScrollPickerProps<T> {
   items: T[];
@@ -7,105 +8,130 @@ interface ScrollPickerProps<T> {
   formatLabel?: (item: T) => string | number;
   height?: number;
   itemHeight?: number;
-  className?: string;
 }
 
-const ScrollPicker = <T,>({
+function ScrollPicker<T>({
   items,
   value,
   onChange,
   formatLabel = (i) => String(i),
-  height = 200,
+  height = 150,
   itemHeight = 50,
-  className = ''
-}: ScrollPickerProps<T>) => {
-  const scrollRef = useRef<HTMLDivElement>(null);
-  const isScrolling = useRef(false);
+}: ScrollPickerProps<T>) {
+  const scrollViewRef = useRef<ScrollView>(null);
+  const [isMomentumScrolling, setIsMomentumScrolling] = useState(false);
 
-  // Scroll to selected value on mount or when value changes externally
   useEffect(() => {
-    if (scrollRef.current && !isScrolling.current) {
-      const index = items.indexOf(value);
-      if (index !== -1) {
-        scrollRef.current.scrollTop = index * itemHeight;
-      }
+    // Initial scroll to selected index
+    const index = items.indexOf(value);
+    if (index !== -1 && scrollViewRef.current) {
+        setTimeout(() => {
+            scrollViewRef.current?.scrollTo({ y: index * itemHeight, animated: false });
+        }, 100);
     }
-  }, [value, items, itemHeight]);
+  }, []); 
 
-  const handleScroll = (e: UIEvent<HTMLDivElement>) => {
-    isScrolling.current = true;
-    const target = e.currentTarget;
-    const scrollTop = target.scrollTop;
-    
-    // Calculate index based on scroll position + half item height for better centering detection
-    const index = Math.round(scrollTop / itemHeight);
-    
+  const handleScrollEnd = (e: NativeSyntheticEvent<NativeScrollEvent>) => {
+    const y = e.nativeEvent.contentOffset.y;
+    const index = Math.round(y / itemHeight);
     if (index >= 0 && index < items.length) {
       const newItem = items[index];
       if (newItem !== value) {
         onChange(newItem);
       }
     }
-
-    // Reset scrolling flag after a delay to allow external updates again
-    clearTimeout((target as any)._scrollTimeout);
-    (target as any)._scrollTimeout = setTimeout(() => {
-      isScrolling.current = false;
-    }, 150);
   };
 
   return (
-    <div 
-      className={`relative overflow-hidden ${className}`}
-      style={{ 
-        height: height,
-        // CSS Mask for smooth fade out at top and bottom without using solid colors
-        maskImage: 'linear-gradient(to bottom, transparent, black 20%, black 80%, transparent)',
-        WebkitMaskImage: 'linear-gradient(to bottom, transparent, black 20%, black 80%, transparent)'
-      }}
-    >
-      {/* Selection Highlight (Glass Effect) */}
-      <div 
-        className="absolute w-full border-t border-b border-[#E84C7C]/20 bg-white/20 backdrop-blur-sm pointer-events-none z-0"
-        style={{ 
-          top: (height - itemHeight) / 2, 
-          height: itemHeight 
-        }}
+    <View style={[styles.container, { height }]}>
+      <View 
+        style={[
+          styles.selectionOverlay, 
+          { 
+            top: (height - itemHeight) / 2, 
+            height: itemHeight 
+          }
+        ]} 
+        pointerEvents="none"
       />
 
-      {/* Scrollable Container */}
-      <div
-        ref={scrollRef}
-        onScroll={handleScroll}
-        className="h-full overflow-y-scroll no-scrollbar scroll-smooth wheel-snap py-[calc(50%-25px)] relative z-10"
-        style={{ 
-          scrollSnapType: 'y mandatory',
-          paddingTop: (height - itemHeight) / 2,
-          paddingBottom: (height - itemHeight) / 2
+      <ScrollView
+        ref={scrollViewRef}
+        showsVerticalScrollIndicator={false}
+        snapToInterval={itemHeight}
+        decelerationRate="fast"
+        onMomentumScrollBegin={() => setIsMomentumScrolling(true)}
+        onMomentumScrollEnd={(e) => {
+            setIsMomentumScrolling(false);
+            handleScrollEnd(e);
+        }}
+        onScrollEndDrag={(e) => {
+            if (!isMomentumScrolling) {
+                handleScrollEnd(e);
+            }
+        }}
+        contentContainerStyle={{
+          paddingVertical: (height - itemHeight) / 2
         }}
       >
         {items.map((item, index) => {
           const isSelected = item === value;
           return (
-            <div
-              key={index}
-              className={`flex items-center justify-center transition-all duration-300 wheel-item ${
-                isSelected 
-                  ? 'text-[#E84C7C] font-bold text-xl scale-110 opacity-100' 
-                  : 'text-gray-400 text-lg scale-95 opacity-40 blur-[0.5px]'
-              }`}
-              style={{ 
-                height: itemHeight,
-                scrollSnapAlign: 'center'
-              }}
+            <View 
+              key={index} 
+              style={[
+                styles.itemContainer, 
+                { height: itemHeight }
+              ]}
             >
-              {formatLabel(item)}
-            </div>
+              <Text 
+                style={[
+                  styles.itemText, 
+                  isSelected ? styles.selectedText : styles.unselectedText
+                ]}
+              >
+                {formatLabel(item)}
+              </Text>
+            </View>
           );
         })}
-      </div>
-    </div>
+      </ScrollView>
+    </View>
   );
-};
+}
+
+const styles = StyleSheet.create({
+  container: {
+    width: '100%',
+    overflow: 'hidden',
+    backgroundColor: 'transparent',
+  },
+  selectionOverlay: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    borderTopWidth: 1,
+    borderBottomWidth: 1,
+    borderColor: 'rgba(232, 76, 124, 0.3)',
+    zIndex: 10,
+  },
+  itemContainer: {
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  itemText: {
+    fontSize: 18,
+  },
+  selectedText: {
+    color: '#E84C7C',
+    fontWeight: 'bold',
+    fontSize: 20,
+  },
+  unselectedText: {
+    color: '#9CA3AF',
+    opacity: 0.6,
+  }
+});
 
 export default ScrollPicker;
