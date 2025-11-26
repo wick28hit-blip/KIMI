@@ -1,3 +1,4 @@
+
 import React, { useRef, useState, useEffect } from 'react';
 import { format, differenceInDays } from 'date-fns';
 import { calculateCycle } from '../utils/calculations';
@@ -11,7 +12,6 @@ interface BubbleProps {
 // --- Water Animation Components ---
 
 const WaterFill = ({ isDragging, color }: { isDragging: boolean; color: string }) => {
-  // We use multiple wave layers to create a realistic 3D liquid effect
   return (
     <div className="absolute inset-0 overflow-hidden rounded-full z-0 pointer-events-none">
       <motion.div
@@ -125,6 +125,11 @@ const BubbleDashboard: React.FC<BubbleProps> = ({ cycleData }) => {
 
   const daysUntilPeriod = differenceInDays(calc.nextPeriodDate, new Date());
   const isPeriodNow = daysUntilPeriod <= 0 && differenceInDays(calc.nextPeriodEnd, new Date()) >= 0;
+  
+  // Use new Prediction Window
+  const accuracyText = calc.predictionWindow 
+    ? `± ${calc.predictionWindow.accuracyDays} day${calc.predictionWindow.accuracyDays > 1 ? 's' : ''}` 
+    : '';
 
   const setDragging = (key: keyof typeof dragState, isDragging: boolean) => {
     setDragState(prev => ({ ...prev, [key]: isDragging }));
@@ -133,14 +138,6 @@ const BubbleDashboard: React.FC<BubbleProps> = ({ cycleData }) => {
   return (
     <div ref={constraintsRef} className="relative h-96 w-full flex items-center justify-center overflow-visible my-6">
       
-      {/* 
-          LAYOUT STRATEGY:
-          We wrap each draggable bubble in a positioned <div>.
-          This wrapper handles the absolute positioning and centering (translate-x-1/2).
-          The inner BubbleNode (motion.div) is 0,0 relative to this wrapper.
-          This ensures dragSnapToOrigin returns it to the visual center of the wrapper.
-      */}
-
       {/* Top Center-Left - Next Period (Primary Bubble) */}
       <div className="absolute top-[-10px] left-[57%] -translate-x-1/2 z-20 w-64 h-64">
         <BubbleNode 
@@ -180,6 +177,13 @@ const BubbleDashboard: React.FC<BubbleProps> = ({ cycleData }) => {
                     ? `Day ${Math.abs(daysUntilPeriod) + 1}` 
                     : `${daysUntilPeriod} days left`}
                 </span>
+                
+                {/* Accuracy Badge */}
+                {!isPeriodNow && (
+                    <div className="mt-2 bg-white/20 px-2 py-0.5 rounded text-[10px] font-bold backdrop-blur-sm pointer-events-none">
+                        {accuracyText}
+                    </div>
+                )}
             </div>
           </motion.div>
         </BubbleNode>

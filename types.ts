@@ -17,6 +17,25 @@ export interface CycleHistory {
   startDate: string;
   endDate: string;
   isConfirmed: boolean;
+  lifestyleImpact?: number; // Recorded shift factor for volatility calc
+}
+
+export interface PredictionWindow {
+  start: Date;
+  end: Date;
+  accuracyDays: number; // +/- days
+  confidence: number; // 0.0 - 1.0
+}
+
+export interface PredictionResult {
+  lastPeriod: Date;
+  nextPeriodDate: Date;
+  nextPeriodEnd: Date;
+  ovulationDate: Date;
+  fertileWindow: { start: Date; end: Date };
+  predictionWindow: PredictionWindow;
+  variance: number;
+  volatility: number;
 }
 
 export interface CycleData {
@@ -25,6 +44,15 @@ export interface CycleData {
   periodDuration: number;
   history: CycleHistory[]; // Past 3 months calibration + confirmed cycles
   lifestyleOffset: number; // Calculated impact in days
+  
+  // Adaptive & Variance Fields
+  adaptiveWeight?: number; 
+  confidenceScore?: number;
+  varianceOffset?: number;
+  
+  // Cached metrics
+  lastVariance?: number;
+  lastVolatility?: number;
 }
 
 export interface DailyLog {
