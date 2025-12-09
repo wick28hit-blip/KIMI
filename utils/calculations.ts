@@ -1,184 +1,165 @@
-import { addDays, format, differenceInDays, parseISO, isSameDay, isWithinInterval, subDays } from 'date-fns';
-import { CycleData, UserProfile, CycleHistory, DailyLog, PredictionResult } from '../types';
+import { addDays, differenceInDays, parseISO, isSameDay, isWithinInterval, subDays } from 'date-fns';
+import { CycleData, UserProfile, PMSAnalysis } from '../types';
 
-export const getLifestyleImpact = (user: UserProfile): number => {
-  let impact = 0;
-  const { habits, isProfessional } = user;
-  if (habits.smoking.value) impact += 2; 
-  if (habits.alcohol.value) impact += 2;
-  if (habits.stress.value || isProfessional) impact += 2.5;
-  if (!habits.sleep.value) impact += 2;
-  if (habits.exercise.value) impact -= 0.5;
-  return impact;
+/**
+ * Calculates BMI and normalizes it to a 0-10 score for the risk formula.
+ * Normalization logic: 
+ * BMI 18.5 - 25 is healthy (Score ~0-2)
+ * BMI > 25 increases score. 
+ * We map BMI range [15, 40] to [0, 10].
+ */
+export const calculateNormalizedBMI = (heightCm: number, weightKg: number): number => {
+  if (!heightCm || !weightKg) return 5;
+  
+  const heightM = heightCm / 100;
+  const bmi = weightKg / (heightM * heightM);
+  
+  // Normalize BMI 15-40 to 0-10 scale
+  const minBMI = 15;
+  const maxBMI = 40;
+  
+  let normalized = ((bmi - minBMI) / (maxBMI - minBMI)) * 10;
+  return Math.max(0, Math.min(10, normalized)); // Clamp between 0-10
 };
 
-export const generateHistoricalCycles = (
-  lastPeriodDate: Date, 
-  cycleLength: number, 
-  periodDuration: number,
-  initialImpact: number = 0
-): CycleHistory[] => {
-  const history: CycleHistory[] = [];
-  for (let i = 1; i <= 3; i++) {
-    const pastStart = subDays(lastPeriodDate, cycleLength * i);
-    const pastEnd = addDays(pastStart, periodDuration);
-    history.push({
-      startDate: format(pastStart, 'yyyy-MM-dd'),
-      endDate: format(pastEnd, 'yyyy-MM-dd'),
-      isConfirmed: false,
-      lifestyleImpact: initialImpact
-    });
+/**
+ * Calculates PMS Risk Score based on research-based weights.
+ * 
+ * Formula:
+ * PMS_Risk_Score = (0.18 * S) + (0.26 * SL) + (0.51 * A) + (0.41 * D) + (0.07 * B) + (0.008 * F)
+ */
+export const analyzePMSRisk = (user?: UserProfile): PMSAnalysis => {
+  if (!user || !user.pmsData) {
+    return { score: 0, severity: 'Low', minDelay: 0, maxDelay: 0 };
   }
-  return history.sort((a, b) => new Date(a.startDate).getTime() - new Date(b.startDate).getTime());
-};
 
-const calculateRollingVariance = (history: CycleHistory[], currentCycleLength: number): number => {
-  if (history.length < 2) return 1.5;
-  const recentHistory = history.slice(-6);
-  const lengths: number[] = [];
-  
-  for (let i = 0; i < recentHistory.length - 1; i++) {
-    const start1 = parseISO(recentHistory[i].startDate);
-    const start2 = parseISO(recentHistory[i+1].startDate);
-    lengths.push(differenceInDays(start2, start1));
-  }
-  lengths.push(currentCycleLength);
+  const { stress, sleep, anxiety, depression, bmi, diet } = user.pmsData;
 
-  if (lengths.length < 2) return 1.5;
+  // Weights
+  const w_stress = 0.18;
+  const w_sleep = 0.26;
+  const w_anxiety = 0.51;
+  const w_depression = 0.41;
+  const w_BMI = 0.07;
+  const w_diet = 0.008;
 
-  const mean = lengths.reduce((sum, val) => sum + val, 0) / lengths.length;
-  const squaredDiffs = lengths.map(val => Math.pow(val - mean, 2));
-  return Math.sqrt(squaredDiffs.reduce((sum, val) => sum + val, 0) / lengths.length);
-};
+  const score = (w_stress * stress) 
+              + (w_sleep * sleep) 
+              + (w_anxiety * anxiety) 
+              + (w_depression * depression) 
+              + (w_BMI * bmi) 
+              + (w_diet * diet);
 
-const calculateLifestyleVolatility = (history: CycleHistory[], currentImpact: number): number => {
-  const recentHistory = history.slice(-3);
-  const impacts: number[] = recentHistory.map(h => Math.abs(h.lifestyleImpact || 0));
-  impacts.push(Math.abs(currentImpact));
-  if (impacts.length === 0) return 0;
-  return impacts.reduce((sum, val) => sum + val, 0) / impacts.length;
-};
+  // Severity Classification
+  let severity: 'Low' | 'Moderate' | 'High' = 'Low';
+  let minDelay = 0;
+  let maxDelay = 0;
 
-export const calculateCycle = (cycleData: CycleData): PredictionResult | null => {
-  if (!cycleData.lastPeriodDate) return null;
-  const lastPeriod = parseISO(cycleData.lastPeriodDate);
-  
-  const cycleVariance = calculateRollingVariance(cycleData.history, cycleData.cycleLength);
-  const lifestyleVolatility = calculateLifestyleVolatility(cycleData.history, cycleData.lifestyleOffset);
-  const predictionRange = cycleVariance + lifestyleVolatility;
-  
-  let accuracyDays = 3;
-  let confidence = 0.90;
-  
-  if (predictionRange <= 1.2) {
-      accuracyDays = 1;
-      confidence = 0.95;
-  } else if (predictionRange <= 2.5) {
-      accuracyDays = 2;
-      confidence = 0.93;
+  if (score < 4) {
+    severity = 'Low';
+    minDelay = 0;
+    maxDelay = 0;
+  } else if (score >= 4 && score <= 7) {
+    severity = 'Moderate';
+    minDelay = 1;
+    maxDelay = 2;
   } else {
-      accuracyDays = 3;
-      confidence = 0.89;
+    severity = 'High';
+    minDelay = 2;
+    maxDelay = 4;
   }
-
-  const basePrediction = addDays(lastPeriod, cycleData.cycleLength);
-  const netShift = cycleData.lifestyleOffset || 0;
-  const adaptiveAdjustment = (cycleData.varianceOffset || 0) * (cycleData.adaptiveWeight || 0);
-  const finalPredictionDate = addDays(basePrediction, netShift + adaptiveAdjustment);
-  const nextPeriodEnd = addDays(finalPredictionDate, cycleData.periodDuration);
-  const ovulationDate = subDays(finalPredictionDate, 14);
 
   return {
-    lastPeriod,
-    nextPeriodDate: finalPredictionDate,
-    nextPeriodEnd,
-    ovulationDate,
-    fertileWindow: { start: subDays(ovulationDate, 5), end: addDays(ovulationDate, 1) },
-    predictionWindow: {
-      start: subDays(finalPredictionDate, accuracyDays),
-      end: addDays(finalPredictionDate, accuracyDays),
-      accuracyDays,
-      confidence
-    },
-    variance: cycleVariance,
-    volatility: lifestyleVolatility
+    score: parseFloat(score.toFixed(2)),
+    severity,
+    minDelay,
+    maxDelay
   };
 };
 
-export const getDayStatus = (date: Date, cycleData: CycleData) => {
-  const inHistory = cycleData.history.find(h => {
-    const start = parseISO(h.startDate);
-    const end = parseISO(h.endDate);
-    return isWithinInterval(date, { start, end });
-  });
+export const calculateCycle = (cycleData: CycleData, user?: UserProfile) => {
+  if (!cycleData.lastPeriodDate) return null;
 
-  if (inHistory) return 'period_past';
+  const pmsAnalysis = analyzePMSRisk(user);
+  
+  // Base Last Period (The confirmed log)
+  const originalLastPeriod = parseISO(cycleData.lastPeriodDate);
+  const today = new Date();
+  
+  // Calculate Cycle Projection
+  // We project "theoretical" cycles if the user hasn't logged for a while (e.g. > 1 cycle length)
+  // This ensures the dashboard shows "Day 5" instead of "Day 385".
+  const daysSinceOriginal = differenceInDays(today, originalLastPeriod);
+  const cycleLen = cycleData.cycleLength;
+  
+  let currentCycleStart = originalLastPeriod;
+  
+  // Only project if we are past the first cycle
+  if (daysSinceOriginal >= cycleLen) {
+      const cyclesPassed = Math.floor(daysSinceOriginal / cycleLen);
+      currentCycleStart = addDays(originalLastPeriod, cyclesPassed * cycleLen);
+  }
+  
+  // Calculate PMS Impact (Delay)
+  const impactDelay = pmsAnalysis.maxDelay;
+  const adjustedCycleLength = cycleLen + impactDelay;
 
-  const calc = calculateCycle(cycleData);
+  // Next Period is based on the CURRENT theoretical start
+  const nextPeriodDate = addDays(currentCycleStart, adjustedCycleLength);
+  
+  // Subtract 1 day because interval is inclusive
+  const nextPeriodEnd = addDays(nextPeriodDate, Math.max(0, cycleData.periodDuration - 1));
+  
+  // Ovulation is roughly 14 days before the NEXT period
+  const ovulationDate = subDays(nextPeriodDate, 14);
+  
+  const fertileStart = subDays(ovulationDate, 5);
+  const fertileEnd = addDays(ovulationDate, 1);
+
+  return {
+    lastPeriod: originalLastPeriod,
+    currentCycleStart, // The start of the current active/theoretical cycle
+    nextPeriodDate,
+    nextPeriodEnd,
+    ovulationDate,
+    fertileWindow: {
+      start: fertileStart,
+      end: fertileEnd
+    },
+    isImpacted: impactDelay > 0,
+    impactDelay,
+    pmsAnalysis
+  };
+};
+
+export const getDayStatus = (date: Date, cycleData: CycleData, user?: UserProfile) => {
+  const calc = calculateCycle(cycleData, user);
   if (!calc) return 'none';
 
-  if (isWithinInterval(date, { start: calc.nextPeriodDate, end: calc.nextPeriodEnd })) return 'period';
-  if (isSameDay(date, calc.ovulationDate)) return 'ovulation';
-  if (isWithinInterval(date, { start: calc.fertileWindow.start, end: calc.fertileWindow.end })) return 'fertile';
+  // Check predicted next period
+  if (isWithinInterval(date, { start: calc.nextPeriodDate, end: calc.nextPeriodEnd })) {
+    return 'period'; // Predicted Future Period
+  }
+
+  // Check CURRENT theoretical period (if we are in days 1-5 of current cycle)
+  const currentPeriodEnd = addDays(calc.currentCycleStart, Math.max(0, cycleData.periodDuration - 1));
+  if (isWithinInterval(date, { start: calc.currentCycleStart, end: currentPeriodEnd })) {
+    // If this is the original logged period, it's 'period_past', otherwise it's a predicted 'period'
+    if (isSameDay(calc.currentCycleStart, calc.lastPeriod)) {
+        return 'period_past';
+    }
+    return 'period'; // Theoretical current period
+  }
+
+  // Check predicted ovulation
+  if (isSameDay(date, calc.ovulationDate)) {
+    return 'ovulation';
+  }
+
+  // Check fertile window
+  if (isWithinInterval(date, { start: calc.fertileWindow.start, end: calc.fertileWindow.end })) {
+    return 'fertile';
+  }
 
   return 'none';
-};
-
-export const recalibrateCycle = (currentCycle: CycleData, actualDate: string): CycleData => {
-    const calc = calculateCycle(currentCycle);
-    if (!calc) return currentCycle;
-
-    const predicted = calc.nextPeriodDate;
-    const actual = parseISO(actualDate);
-    const errorDays = differenceInDays(actual, predicted);
-    
-    const confidenceScore = Math.max(0, 100 - (Math.abs(errorDays) * 10));
-    let adaptiveWeight = currentCycle.adaptiveWeight || 0;
-    
-    if (Math.abs(errorDays) > 2) {
-        adaptiveWeight += 0.1; 
-    } else {
-        adaptiveWeight = Math.max(0, adaptiveWeight - 0.05); 
-    }
-
-    const trend = 0; // Simplified trend
-    const varianceOffset = 1.5 * trend;
-
-    const newHistoryEntry: CycleHistory = {
-        startDate: actualDate,
-        endDate: format(addDays(actual, currentCycle.periodDuration), 'yyyy-MM-dd'),
-        isConfirmed: true,
-        lifestyleImpact: currentCycle.lifestyleOffset
-    };
-
-    const newHistory = [...currentCycle.history, newHistoryEntry].sort((a,b) => 
-        new Date(a.startDate).getTime() - new Date(b.startDate).getTime()
-    );
-
-    return {
-        ...currentCycle,
-        lastPeriodDate: actualDate,
-        history: newHistory,
-        adaptiveWeight,
-        confidenceScore,
-        varianceOffset
-    };
-};
-
-export const generateRuleBasedInsights = (cycleData: CycleData, logs: Record<string, DailyLog>, today: Date): string | null => {
-  const calc = calculateCycle(cycleData);
-  if (!calc) return null;
-
-  const todayStr = format(today, 'yyyy-MM-dd');
-  const todayLog = logs[todayStr];
-  const isOnPeriod = getDayStatus(today, cycleData).includes('period');
-  const isFertile = getDayStatus(today, cycleData) === 'fertile';
-
-  if (todayLog && todayLog.waterIntake <= 4 && isOnPeriod) {
-    return "💧 Stay hydrated! It helps reduce cramps.";
-  }
-  if (todayLog?.exercise?.performed && isFertile) {
-    return "✨ Great timing! Exercise boosts fertility hormones.";
-  }
-  return null;
 };

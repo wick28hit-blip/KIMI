@@ -1,115 +1,166 @@
-import React from 'react';
-import { View, Text, TouchableOpacity, ScrollView, Switch, StyleSheet } from 'react-native';
-import { Bell, Moon, Shield, Download, Upload, Trash2, ChevronRight, Lock, LogOut, FileText } from 'lucide-react-native';
-import { UserProfile } from '../types';
+import React, { useRef } from 'react';
+import { Bell, Moon, Shield, Download, Upload, Trash2, ChevronRight, Lock, Sun, LogOut, UserPlus } from 'lucide-react';
 
 interface SettingsProps {
   onExport: () => void;
-  onImport: (file: any) => void;
+  onImport: (file: File) => void;
   onDeleteData: () => void;
   isDarkMode: boolean;
   onToggleDarkMode: () => void;
   onLogout: () => void;
-  onOpenSecretVault: () => void;
-  isVaultView?: boolean;
-  user?: UserProfile | null;
-  onUpdateUser?: (user: UserProfile) => void;
+  onAddProfile: () => void;
 }
 
 const Settings: React.FC<SettingsProps> = ({ 
   onExport, 
+  onImport, 
   onDeleteData, 
   isDarkMode, 
   onToggleDarkMode,
   onLogout,
-  onOpenSecretVault,
-  isVaultView
+  onAddProfile
 }) => {
-  const containerStyle = { backgroundColor: isDarkMode ? '#111827' : '#FFF0F3' };
-  const textStyle = { color: isDarkMode ? 'white' : '#2D2D2D' };
-  const cardStyle = { backgroundColor: isDarkMode ? '#1F2937' : 'white', borderRadius: 16, padding: 16, marginBottom: 16 };
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
-  if (isVaultView) {
-      return (
-          <View style={[styles.container, { backgroundColor: '#111827' }]}>
-              <View style={{ padding: 24, paddingTop: 60, flexDirection: 'row', alignItems: 'center' }}>
-                  <TouchableOpacity onPress={onOpenSecretVault} style={{ padding: 8, backgroundColor: '#374151', borderRadius: 20, marginRight: 16 }}>
-                      <ChevronRight color="white" style={{ transform: [{ rotate: '180deg' }] }} size={24} />
-                  </TouchableOpacity>
-                  <Text style={{ fontSize: 24, fontWeight: 'bold', color: 'white' }}>Secret Vault</Text>
-              </View>
-              <Text style={{ color: '#9CA3AF', paddingHorizontal: 24 }}>Encrypted Area. Secure habits editing coming soon.</Text>
-          </View>
-      )
-  }
+  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      onImport(file);
+    }
+  };
 
   return (
-    <View style={[styles.container, containerStyle]}>
-      <View style={{ padding: 24, paddingTop: 60, flexDirection: 'row', justifyContent: 'space-between' }}>
-         <Text style={[styles.header, textStyle]}>Settings</Text>
-         <Bell color={isDarkMode ? 'white' : 'gray'} size={24} />
-      </View>
+    <div className="flex flex-col h-full bg-[#FFF0F3] dark:bg-gray-900 p-6 overflow-y-auto no-scrollbar pb-32 transition-colors duration-300">
+      <header className="flex justify-between items-center mb-8">
+        <h1 className="text-3xl font-bold text-[#2D2D2D] dark:text-white">Settings</h1>
+        <button className="p-2 bg-white dark:bg-gray-800 rounded-full shadow-sm text-gray-500 dark:text-gray-300">
+          <Bell size={20} />
+        </button>
+      </header>
 
-      <ScrollView contentContainerStyle={{ padding: 24, paddingTop: 0 }}>
+      {/* Profile Management */}
+       <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm p-2 mb-6 border border-pink-50 dark:border-gray-700 transition-colors">
+          <div className="p-4 border-b border-gray-50 dark:border-gray-700">
+             <h3 className="font-semibold text-gray-800 dark:text-gray-100">Profile Management</h3>
+          </div>
+          <button 
+            onClick={onAddProfile}
+            className="w-full p-4 flex items-center justify-between hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors text-left"
+          >
+            <div className="flex items-center gap-3 text-gray-600 dark:text-gray-300">
+              <UserPlus size={18} />
+              <span className="text-sm font-medium">Add Another Profile</span>
+            </div>
+            <ChevronRight size={16} className="text-gray-400" />
+          </button>
+       </div>
+
+      {/* Privacy & Security */}
+      <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm p-2 mb-6 border border-pink-50 dark:border-gray-700 transition-colors">
+        <div className="p-4 border-b border-gray-50 dark:border-gray-700 flex items-center gap-3">
+          <Shield className="text-[#E84C7C]" size={20} />
+          <div className="flex-1">
+            <h3 className="font-semibold text-gray-800 dark:text-gray-100">Privacy & Security</h3>
+            <p className="text-xs text-gray-500 dark:text-gray-400">Your data is stored locally and encrypted</p>
+          </div>
+        </div>
         
-        <TouchableOpacity onPress={onOpenSecretVault} style={[cardStyle, { flexDirection: 'row', alignItems: 'center', backgroundColor: isDarkMode ? '#374151' : '#1F2937' }]}>
-            <View style={{ padding: 10, backgroundColor: '#374151', borderRadius: 25, marginRight: 16 }}>
-                <Shield color="#E84C7C" size={24} />
-            </View>
-            <View style={{ flex: 1 }}>
-                <Text style={{ color: 'white', fontWeight: 'bold', fontSize: 18 }}>Secret Vault</Text>
-                <Text style={{ color: '#9CA3AF', fontSize: 12 }}>Encrypted Habits</Text>
-            </View>
-            <Lock color="#6B7280" size={20} />
-        </TouchableOpacity>
+        <div className="p-4 flex items-center justify-between">
+          <div className="flex items-center gap-3 text-gray-600 dark:text-gray-300">
+            <Lock size={18} />
+            <span className="text-sm font-medium">PIN Lock</span>
+          </div>
+          <div className="w-11 h-6 bg-[#E84C7C] rounded-full relative cursor-pointer">
+            <div className="absolute right-1 top-1 w-4 h-4 bg-white rounded-full shadow-sm" />
+          </div>
+        </div>
 
-        <View style={cardStyle}>
-            <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 16 }}>
-                <FileText color="#E84C7C" size={20} style={{ marginRight: 10 }} />
-                <Text style={[{ fontWeight: '600', fontSize: 16 }, textStyle]}>Data Management</Text>
-            </View>
-            <TouchableOpacity onPress={onExport} style={styles.rowBtn}>
-                <Download size={18} color="gray" />
-                <Text style={[styles.rowText, textStyle]}>Export Data</Text>
-            </TouchableOpacity>
-        </View>
+        <button 
+          onClick={onExport}
+          className="w-full p-4 flex items-center justify-between hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors text-left"
+        >
+          <div className="flex items-center gap-3 text-gray-600 dark:text-gray-300">
+            <Download size={18} />
+            <span className="text-sm font-medium">Export Data</span>
+          </div>
+          <ChevronRight size={16} className="text-gray-400" />
+        </button>
 
-        <View style={cardStyle}>
-            <Text style={[{ fontWeight: '600', fontSize: 16, marginBottom: 16 }, textStyle]}>Preferences</Text>
-            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-                <View style={{ flexDirection: 'row', gap: 10 }}>
-                    <Moon size={18} color="gray" />
-                    <Text style={textStyle}>Dark Mode</Text>
-                </View>
-                <Switch value={isDarkMode} onValueChange={onToggleDarkMode} trackColor={{ false: '#767577', true: '#E84C7C' }} />
-            </View>
-        </View>
+        <button 
+          onClick={() => fileInputRef.current?.click()}
+          className="w-full p-4 flex items-center justify-between hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors text-left"
+        >
+          <div className="flex items-center gap-3 text-gray-600 dark:text-gray-300">
+            <Upload size={18} />
+            <span className="text-sm font-medium">Import Data</span>
+          </div>
+          <ChevronRight size={16} className="text-gray-400" />
+        </button>
+        <input 
+          type="file" 
+          ref={fileInputRef} 
+          className="hidden" 
+          accept=".json" 
+          onChange={handleFileChange}
+        />
+      </div>
 
-        <TouchableOpacity onPress={onLogout} style={[cardStyle, { flexDirection: 'row', gap: 12, justifyContent: 'center' }]}>
-            <LogOut color="gray" size={20} />
-            <Text style={{ fontWeight: '600', color: 'gray' }}>Log Out</Text>
-        </TouchableOpacity>
+      {/* Preferences */}
+      <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm p-4 mb-6 border border-pink-50 dark:border-gray-700 transition-colors">
+        <h3 className="font-semibold text-gray-800 dark:text-gray-100 mb-4 ml-1">Preferences</h3>
+        
+        <div 
+          className="flex items-center justify-between mb-6 cursor-pointer" 
+          onClick={onToggleDarkMode}
+        >
+          <div className="flex items-center gap-3 text-gray-600 dark:text-gray-300">
+            {isDarkMode ? <Sun size={18} /> : <Moon size={18} />}
+            <span className="text-sm font-medium">{isDarkMode ? 'Light Mode' : 'Dark Mode'}</span>
+          </div>
+          
+          {/* Toggle Switch */}
+          <div className={`w-11 h-6 rounded-full relative transition-colors duration-300 ${isDarkMode ? 'bg-[#E84C7C]' : 'bg-gray-200'}`}>
+            <div className={`absolute top-1 w-4 h-4 bg-white rounded-full shadow-sm transition-all duration-300 ${isDarkMode ? 'left-6' : 'left-1'}`} />
+          </div>
+        </div>
 
-        <TouchableOpacity onPress={onDeleteData} style={{ marginTop: 20, padding: 16, borderWidth: 1, borderColor: '#FECACA', borderRadius: 16, backgroundColor: '#FEF2F2', flexDirection: 'row', justifyContent: 'center', gap: 10 }}>
-            <Trash2 color="#EF4444" size={20} />
-            <Text style={{ color: '#EF4444', fontWeight: 'bold' }}>Delete All Data</Text>
-        </TouchableOpacity>
+        <div className="flex items-center justify-between mb-2">
+          <div className="flex items-center gap-3 text-gray-600 dark:text-gray-300">
+            <Bell size={18} />
+            <span className="text-sm font-medium">Notifications</span>
+          </div>
+          {/* Mock Toggle - Active */}
+          <div className="w-11 h-6 bg-[#E84C7C] rounded-full relative cursor-pointer">
+            <div className="absolute right-1 top-1 w-4 h-4 bg-white rounded-full shadow-sm" />
+          </div>
+        </div>
+      </div>
 
-        <View style={{ marginTop: 20, alignItems: 'center' }}>
-            <Text style={{ fontSize: 12, color: '#9CA3AF', textAlign: 'center' }}>KIMI is for tracking purposes only. Not medical advice.</Text>
-            <Text style={{ fontSize: 12, color: '#9CA3AF', marginTop: 8, textAlign: 'center' }}>Privacy: Data stays on your device.</Text>
-        </View>
+      {/* Log Out Button */}
+      <button 
+        onClick={onLogout}
+        className="w-full p-4 bg-white dark:bg-gray-800 rounded-2xl shadow-sm mb-6 border border-pink-50 dark:border-gray-700 flex items-center gap-3 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+      >
+        <LogOut size={18} />
+        <span className="font-medium">Log Out</span>
+      </button>
 
-      </ScrollView>
-    </View>
+      {/* Danger Zone */}
+      <div className="border-2 border-red-100 dark:border-red-900/30 bg-red-50/50 dark:bg-red-900/10 rounded-2xl p-4 mt-auto">
+        <h3 className="font-semibold text-red-800 dark:text-red-400 mb-2">Danger Zone</h3>
+        <p className="text-xs text-red-600 dark:text-red-400/80 mb-4">
+          Deleting your data is permanent. Please export your data before proceeding so you can restore it later.
+        </p>
+        <button 
+          onClick={onDeleteData}
+          className="w-full py-3 bg-white dark:bg-gray-800 border border-red-200 dark:border-red-900/50 text-red-600 dark:text-red-400 rounded-xl font-medium shadow-sm active:bg-red-50 dark:active:bg-red-900/20 flex items-center justify-center gap-2 transition-colors"
+        >
+          <Trash2 size={18} />
+          Delete All Data
+        </button>
+      </div>
+    </div>
   );
 };
-
-const styles = StyleSheet.create({
-  container: { flex: 1 },
-  header: { fontSize: 32, fontWeight: 'bold' },
-  rowBtn: { flexDirection: 'row', alignItems: 'center', paddingVertical: 12, gap: 10 },
-  rowText: { fontSize: 14, fontWeight: '500' }
-});
 
 export default Settings;
