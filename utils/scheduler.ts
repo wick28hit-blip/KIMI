@@ -1,4 +1,4 @@
-import { calculateCycle } from '@/utils/calculations';
+import { calculateCycle } from './calculations';
 import { getProfileFromIDB, getLastNotification, logNotificationSent } from './db';
 import { differenceInDays, startOfDay } from 'date-fns';
 
@@ -87,7 +87,5 @@ export const checkMoodTrigger = (moods: string[], symptoms: string[]) => {
       `Looks like you're experiencing some discomfort. Try treating yourself to a little chocolate or rest. You deserve kindness.`,
       "mood-support"
     );
-    // We don't log this to history strictly to debounce, as multiple logs might warrant multiple comforts, 
-    // but practically we should probably debounce it to 1 hour to avoid spam if they edit the log repeatedly.
   }
 };

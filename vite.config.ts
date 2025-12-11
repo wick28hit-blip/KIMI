@@ -19,7 +19,7 @@ export default defineConfig(({ mode }) => {
         react(),
         VitePWA({
           strategies: 'injectManifest', // Switch to custom SW
-          srcDir: 'src',
+          srcDir: '.', // Point to root since service-worker.ts is now in root
           filename: 'service-worker.ts',
           registerType: 'autoUpdate',
           includeAssets: ['kimi_192.svg', 'kimi_512.svg'],
