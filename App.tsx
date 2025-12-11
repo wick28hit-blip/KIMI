@@ -288,7 +288,16 @@ const App: React.FC = () => {
         const result = e.target?.result as string;
         if (!result) return;
         
-        const json = JSON.parse(result) as any;
+        // Define interface for migration support
+        interface ImportFormat {
+           profiles?: Record<string, ProfileData>;
+           activeProfileId?: string;
+           user?: any; // Loose type for migration
+           cycle?: CycleData;
+           logs?: Record<string, DailyLog>;
+        }
+
+        const json = JSON.parse(result) as ImportFormat;
         
         // Handle Import for Multi-profile structure
         let importedProfiles: Record<string, ProfileData> = {};
