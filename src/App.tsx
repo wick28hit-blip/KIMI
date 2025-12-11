@@ -9,6 +9,10 @@ import { Home, Calendar, PlusCircle, BarChart2, Droplet, Activity, Settings as S
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, isToday, addMonths, subMonths } from 'date-fns';
 import { getDayStatus } from './utils/calculations';
 
+// Notification Logic
+import { syncProfileToIDB, getLastNotification, logNotificationSent } from './utils/db';
+import { triggerLocalNotification, checkPeriodicNotifications, checkMoodTrigger } from './utils/scheduler';
+
 const App: React.FC = () => {
   const [state, setState] = useState<AppState>({
     view: 'BOOT',
@@ -25,6 +29,54 @@ const App: React.FC = () => {
   
   // Custom Modal State
   const [showDeleteModal, setShowDeleteModal] = useState(false);
+
+  // --- NOTIFICATION SETUP ---
+  useEffect(() => {
+    // 1. Request Permission
+    if ('Notification' in window && Notification.permission === 'default') {
+        Notification.requestPermission();
+    }
+
+    // 2. Register Periodic Sync (if supported)
+    const registerPeriodicSync = async () => {
+        if ('serviceWorker' in navigator) {
+            const registration = await navigator.serviceWorker.ready;
+            if ('periodicSync' in registration) {
+                try {
+                    // @ts-ignore - periodicsync types are experimental
+                    await registration.periodicSync.register('kimi-pms-notification-sync', {
+                        minInterval: 10 * 60 * 1000, // 10 minutes
+                    });
+                    console.log("Periodic Sync Registered");
+                } catch (e) {
+                    console.log("Periodic Sync not supported/allowed", e);
+                }
+            }
+        }
+    };
+    registerPeriodicSync();
+
+    // 3. Foreground Timer Interval (Fallback for 10 min checks)
+    const intervalId = setInterval(() => {
+        // Send signal to SW or check directly
+        checkPeriodicNotifications();
+    }, 10 * 60 * 1000); // 10 minutes
+
+    return () => clearInterval(intervalId);
+  }, []);
+
+  // --- SYNC STATE TO INDEXEDDB FOR SW ---
+  useEffect(() => {
+    if (state.user && state.cycle && state.activeProfileId) {
+        const profileData: ProfileData = {
+            user: state.user,
+            cycle: state.cycle,
+            logs: state.logs
+        };
+        syncProfileToIDB(profileData).catch(console.error);
+    }
+  }, [state.user, state.cycle, state.logs, state.activeProfileId]);
+
 
   // Load Data and Theme
   useEffect(() => {
@@ -84,6 +136,22 @@ const App: React.FC = () => {
       setState(s => ({ ...s, darkMode: !s.darkMode }));
   };
 
+  const checkLoginNotification = async () => {
+      // Rule 1: "Log Today" Notification upon Login
+      // Logic: Once per day
+      const lastLoginNotif = await getLastNotification('LOGIN');
+      const isNewDay = !lastLoginNotif || (new Date(lastLoginNotif).getDate() !== new Date().getDate());
+      
+      if (isNewDay) {
+          triggerLocalNotification(
+              "Log Today's Update",
+              "Please complete your Flow, Mood, and Symptoms for today in the Log Today tab.",
+              "daily-log-reminder"
+          );
+          await logNotificationSent('LOGIN');
+      }
+  };
+
   const handleLogin = (pin: string) => {
     const encryptedData = localStorage.getItem(STORAGE_KEY);
     if (encryptedData) {
@@ -131,6 +199,10 @@ const App: React.FC = () => {
               cycle: activeData.cycle,
               logs: activeData.logs
             }));
+            
+            // --- FIRE LOGIN NOTIFICATION ---
+            checkLoginNotification();
+
         } else {
              setLoginError(true);
         }
@@ -232,6 +304,9 @@ const App: React.FC = () => {
   const saveLog = (log: DailyLog) => {
     if (!state.activeProfileId) return;
 
+    // --- CHECK MOOD TRIGGER NOTIFICATION ---
+    checkMoodTrigger(log.mood, log.symptoms);
+
     const currentProfile = state.profiles[state.activeProfileId];
     const newLogs = { ...currentProfile.logs, [log.date]: log };
     const updatedProfile = { ...currentProfile, logs: newLogs };
@@ -307,7 +382,12 @@ const App: React.FC = () => {
              };
 
              const profile: ProfileData = {
-                user: { ...json.user, id: uid, pmsData },
+                user: { 
+                    ...json.user, 
+                    id: uid, 
+                    relationship: json.user.relationship || 'Self',
+                    pmsData 
+                },
                 cycle: json.cycle,
                 logs: json.logs || {}
              };
@@ -318,7 +398,7 @@ const App: React.FC = () => {
         if (Object.keys(importedProfiles).length > 0) {
             // We need a PIN to encrypt this into storage. Ask user to confirm with current PIN?
             // Or just use the pin from the imported 'Self' user.
-            const profilesArray: ProfileData[] = Object.values(importedProfiles) as ProfileData[];
+            const profilesArray: ProfileData[] = Object.values(importedProfiles);
             const primary = profilesArray.find((p: ProfileData) => p.user?.relationship === 'Self');
             const pin = primary?.user?.pin || '0000'; // Fallback if messed up
 

@@ -2,8 +2,16 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+    <meta name="theme-color" content="#FFF0F3" media="(prefers-color-scheme: light)">
+    <meta name="theme-color" content="#111827" media="(prefers-color-scheme: dark)">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-title" content="KIMI">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <title>KIMI</title>
+    <!-- Removed leading slash '/' to make paths relative -->
+    <link rel="icon" type="image/svg+xml" href="kimi_192.svg" />
+    <link rel="apple-touch-icon" href="kimi_192.svg" />
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
       tailwind.config = {
@@ -63,7 +71,10 @@
     "path": "https://aistudiocdn.com/path@^0.12.7",
     "vite": "https://aistudiocdn.com/vite@^7.2.7",
     "@vitejs/plugin-react": "https://aistudiocdn.com/@vitejs/plugin-react@^5.1.2",
-    "url": "https://aistudiocdn.com/url@^0.11.4"
+    "url": "https://aistudiocdn.com/url@^0.11.4",
+    "vite-plugin-pwa": "https://aistudiocdn.com/vite-plugin-pwa@^0.21.1",
+    "webworker": "https://esm.sh/webworker@^0.8.4",
+    "workbox-precaching": "https://esm.sh/workbox-precaching@^7.4.0"
   }
 }
 </script>
