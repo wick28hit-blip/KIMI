@@ -86,26 +86,32 @@ export const calculateCycle = (cycleData: CycleData, user?: UserProfile) => {
   const originalLastPeriod = parseISO(cycleData.lastPeriodDate);
   const today = new Date();
   
+  // ALGORITHM UPDATE:
+  // User definition: "If cycle is 28 days, the 28th day is the NEXT period start."
+  // This implies the interval between periods is (CycleLength - 1).
+  // Standard medical definition is usually exact CycleLength, but we adhere to user preference here.
+  const effectiveInterval = Math.max(20, cycleData.cycleLength - 1); 
+
   // Calculate Cycle Projection
   // We project "theoretical" cycles if the user hasn't logged for a while (e.g. > 1 cycle length)
-  // This ensures the dashboard shows "Day 5" instead of "Day 385".
   const daysSinceOriginal = differenceInDays(today, originalLastPeriod);
-  const cycleLen = cycleData.cycleLength;
   
   let currentCycleStart = originalLastPeriod;
   
   // Only project if we are past the first cycle
-  if (daysSinceOriginal >= cycleLen) {
-      const cyclesPassed = Math.floor(daysSinceOriginal / cycleLen);
-      currentCycleStart = addDays(originalLastPeriod, cyclesPassed * cycleLen);
+  if (daysSinceOriginal >= effectiveInterval) {
+      const cyclesPassed = Math.floor(daysSinceOriginal / effectiveInterval);
+      currentCycleStart = addDays(originalLastPeriod, cyclesPassed * effectiveInterval);
   }
   
   // Calculate PMS Impact (Delay)
   const impactDelay = pmsAnalysis.maxDelay;
-  const adjustedCycleLength = cycleLen + impactDelay;
+  
+  // Adjusted Length adds delay to the interval
+  const adjustedCycleInterval = effectiveInterval + impactDelay;
 
   // Next Period is based on the CURRENT theoretical start
-  const nextPeriodDate = addDays(currentCycleStart, adjustedCycleLength);
+  const nextPeriodDate = addDays(currentCycleStart, adjustedCycleInterval);
   
   // Subtract 1 day because interval is inclusive
   const nextPeriodEnd = addDays(nextPeriodDate, Math.max(0, cycleData.periodDuration - 1));

@@ -150,7 +150,7 @@ const App: React.FC = () => {
   };
 
   // Called when Onboarding finishes
-  const handleCreateProfile = (user: UserProfile, cycle: CycleData) => {
+  const handleCreateProfile = (user: UserProfile, cycle: CycleData, initialLogs: Record<string, DailyLog> = {}) => {
     // Determine if this is the FIRST profile (Setup) or an ADDITIONAL profile
     const isInitialSetup = Object.keys(state.profiles).length === 0;
 
@@ -160,7 +160,7 @@ const App: React.FC = () => {
     if (!isInitialSetup) {
         // We are adding a profile while logged in.
         // Rule: All profiles share the same PIN (usually the Mother/Primary User's PIN).
-        const primaryUser = Object.values(state.profiles).find(p => p.user.relationship === 'Self')?.user;
+        const primaryUser = (Object.values(state.profiles) as ProfileData[]).find((p: ProfileData) => p.user.relationship === 'Self')?.user;
         const existingPin = primaryUser?.pin || state.user?.pin;
 
         if (existingPin) {
@@ -171,7 +171,8 @@ const App: React.FC = () => {
         }
     }
 
-    const newProfileData: ProfileData = { user: userToSave, cycle, logs: {} };
+    // Merge logs if needed, though usually new profile has empty logs
+    const newProfileData: ProfileData = { user: userToSave, cycle, logs: initialLogs };
     const newProfiles = { ...state.profiles, [user.id]: newProfileData };
 
     const storageData = {
@@ -190,7 +191,7 @@ const App: React.FC = () => {
       activeProfileId: user.id,
       user: userToSave,
       cycle: cycle,
-      logs: {}
+      logs: initialLogs
     }));
   };
 
@@ -264,26 +265,44 @@ const App: React.FC = () => {
     const reader = new FileReader();
     reader.onload = (e) => {
       try {
-        const json = JSON.parse(e.target?.result as string);
+        const result = e.target?.result as string;
+        if (!result) return;
+        
+        // Define shape of exported data to handle both old and new formats
+        interface ExportData {
+          profiles?: Record<string, ProfileData>;
+          activeProfileId?: string;
+          user?: UserProfile;
+          cycle?: CycleData;
+          logs?: Record<string, DailyLog>;
+        }
+
+        const json = JSON.parse(result) as ExportData;
         
         // Handle Import for Multi-profile structure
-        let importedProfiles = {};
+        let importedProfiles: Record<string, ProfileData> = {};
         let activeId = '';
 
         if (json.profiles) {
             importedProfiles = json.profiles;
-            activeId = json.activeProfileId;
+            activeId = json.activeProfileId || '';
         } else if (json.user && json.cycle) {
              // Migrate old export format
              const uid = json.user.id || 'imported_user';
-             importedProfiles = { [uid]: { user: {...json.user, id: uid}, cycle: json.cycle, logs: json.logs || {} } };
+             const profile: ProfileData = {
+                user: { ...json.user, id: uid },
+                cycle: json.cycle,
+                logs: json.logs || {}
+             };
+             importedProfiles = { [uid]: profile };
              activeId = uid;
         }
 
         if (Object.keys(importedProfiles).length > 0) {
             // We need a PIN to encrypt this into storage. Ask user to confirm with current PIN?
             // Or just use the pin from the imported 'Self' user.
-            const primary = Object.values(importedProfiles).find((p: any) => p.user.relationship === 'Self') as any;
+            const profilesArray = Object.values(importedProfiles);
+            const primary = profilesArray.find((p) => p.user?.relationship === 'Self');
             const pin = primary?.user?.pin || '0000'; // Fallback if messed up
 
             const storageData = { profiles: importedProfiles, activeProfileId: activeId };
@@ -292,15 +311,16 @@ const App: React.FC = () => {
             localStorage.setItem(STORAGE_KEY, encrypted);
             localStorage.setItem(HAS_ACCOUNT_KEY, 'true');
             
-            const activeData = (importedProfiles as any)[activeId];
+            const activeData = importedProfiles[activeId];
+            
             setState(s => ({
                 ...s,
                 view: 'HOME',
                 profiles: importedProfiles,
                 activeProfileId: activeId,
-                user: activeData.user,
-                cycle: activeData.cycle,
-                logs: activeData.logs
+                user: activeData?.user || null,
+                cycle: activeData?.cycle || null,
+                logs: activeData?.logs || {}
             }));
             alert('Data imported successfully!');
         } else {
@@ -359,17 +379,29 @@ const App: React.FC = () => {
         </div>
 
         <div className="flex flex-wrap gap-4 justify-center mb-6 px-2">
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 group relative cursor-help">
                 <div className="w-3 h-3 rounded-full bg-[#E84C7C]"></div>
                 <span className="text-xs font-medium text-gray-600 dark:text-gray-300">Period</span>
+                <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2 py-1 bg-gray-800 text-white text-[10px] rounded shadow-lg whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10">
+                   Days of menstruation
+                   <div className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-gray-800"></div>
+                </div>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 group relative cursor-help">
                 <div className="w-3 h-3 rounded-full bg-[#7B86CB]"></div>
                 <span className="text-xs font-medium text-gray-600 dark:text-gray-300">Ovulation</span>
+                <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2 py-1 bg-gray-800 text-white text-[10px] rounded shadow-lg whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10">
+                   Predicted peak fertility
+                   <div className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-gray-800"></div>
+                </div>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 group relative cursor-help">
                 <div className="w-3 h-3 rounded-full bg-pink-100 dark:bg-pink-900/40 border border-pink-200 dark:border-pink-800/50"></div>
                 <span className="text-xs font-medium text-gray-600 dark:text-gray-300">Fertile</span>
+                <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2 py-1 bg-gray-800 text-white text-[10px] rounded shadow-lg whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10">
+                   High chance of conception
+                   <div className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-gray-800"></div>
+                </div>
             </div>
         </div>
         
@@ -379,7 +411,15 @@ const App: React.FC = () => {
 
         <div className="grid grid-cols-7 gap-y-4 gap-x-2">
            {days.map(day => {
-             const status = state.cycle ? getDayStatus(day, state.cycle, state.user || undefined) : 'none';
+             let status = state.cycle ? getDayStatus(day, state.cycle, state.user || undefined) : 'none';
+             
+             // Check manual logs for period confirmation
+             const dateKey = format(day, 'yyyy-MM-dd');
+             const log = state.logs[dateKey];
+             if (log?.flow) {
+                 status = 'period_past';
+             }
+
              let bg = 'bg-transparent';
              let text = 'text-gray-700 dark:text-gray-300';
              
@@ -454,7 +494,7 @@ const App: React.FC = () => {
   };
 
   const renderInsights = () => {
-    const logs = Object.values(state.logs);
+    const logs = Object.values(state.logs) as DailyLog[];
     const totalDays = logs.length;
     
     // 1. Water Stats
@@ -604,12 +644,12 @@ const App: React.FC = () => {
     const log = state.logs[today] || { 
         date: today, 
         waterIntake: 0, 
-        flow: null,
-        symptoms: [],
-        mood: [],
-        medication: false,
-        didExercise: false,
-        habits: { smoked: false, drank: false }
+        flow: null, 
+        symptoms: [], 
+        mood: [], 
+        medication: false, 
+        didExercise: false, 
+        habits: { smoked: false, drank: false } 
     };
 
     const toggleSymptom = (sym: string) => {
