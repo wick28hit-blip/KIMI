@@ -1,4 +1,4 @@
-import { calculateCycle } from '@/utils/calculations';
+import { calculateCycle } from './calculations';
 import { getProfileFromIDB, getLastNotification, logNotificationSent } from './db';
 import { differenceInDays, startOfDay } from 'date-fns';
 
@@ -10,19 +10,19 @@ export const triggerLocalNotification = (title: string, body: string, tag: strin
     if (swSelf.registration && 'showNotification' in swSelf.registration) {
       swSelf.registration.showNotification(title, {
         body,
-        icon: '/kimi_192.svg',
+        icon: 'kimi_192.svg', // Changed to relative path
         tag,
-        badge: '/kimi_192.svg',
+        badge: 'kimi_192.svg', // Changed to relative path
         vibrate: [200, 100, 200]
-      } as any); // Cast options to any to avoid strict type checks on vibrate
+      } as any); 
     } else {
-      // If we are in the Window context
+      // If we are in the Window context (Foreground)
       new Notification(title, {
         body,
-        icon: '/kimi_192.svg',
+        icon: 'kimi_192.svg',
         tag,
         vibrate: [200, 100, 200]
-      } as any); // Cast options to any
+      } as any); 
     }
   }
 };
@@ -87,7 +87,5 @@ export const checkMoodTrigger = (moods: string[], symptoms: string[]) => {
       `Looks like you're experiencing some discomfort. Try treating yourself to a little chocolate or rest. You deserve kindness.`,
       "mood-support"
     );
-    // We don't log this to history strictly to debounce, as multiple logs might warrant multiple comforts, 
-    // but practically we should probably debounce it to 1 hour to avoid spam if they edit the log repeatedly.
   }
 };

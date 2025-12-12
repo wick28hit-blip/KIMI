@@ -1,0 +1,29 @@
+body {
+  font-family: 'Quicksand', sans-serif;
+  background-color: #FFF0F3;
+  color: #2D2D2D;
+  overscroll-behavior: none;
+  transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+body.dark {
+  background-color: #111827;
+  color: #F3F4F6;
+}
+
+/* Custom Scrollbar hide */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+/* Wheel Picker Simulation */
+.wheel-snap {
+  scroll-snap-type: y mandatory;
+}
+.wheel-item {
+  scroll-snap-align: center;
+}

@@ -10,7 +10,7 @@ const __dirname = path.dirname(__filename);
 export default defineConfig(({ mode }) => {
     const env = loadEnv(mode, __dirname, '');
     return {
-      base: './', // Ensure assets are loaded relatively
+      base: './', 
       server: {
         port: 3000,
         host: '0.0.0.0',
@@ -18,8 +18,8 @@ export default defineConfig(({ mode }) => {
       plugins: [
         react(),
         VitePWA({
-          strategies: 'injectManifest', // Switch to custom SW
-          srcDir: '.', // Point to root since service-worker.ts is now in root
+          strategies: 'injectManifest',
+          srcDir: '.',
           filename: 'service-worker.ts',
           registerType: 'autoUpdate',
           includeAssets: ['kimi_192.svg', 'kimi_512.svg'],
@@ -31,8 +31,8 @@ export default defineConfig(({ mode }) => {
             background_color: '#FFF0F3',
             display: 'standalone',
             orientation: 'portrait',
-            scope: './', // Relative scope
-            start_url: './', // Relative start URL
+            scope: './', 
+            start_url: './', 
             icons: [
               {
                 src: 'kimi_192.svg',
