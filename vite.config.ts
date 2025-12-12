@@ -10,7 +10,7 @@ const __dirname = path.dirname(__filename);
 export default defineConfig(({ mode }) => {
     const env = loadEnv(mode, __dirname, '');
     return {
-      base: './', 
+      base: '/', 
       server: {
         port: 3000,
         host: '0.0.0.0',
@@ -31,21 +31,21 @@ export default defineConfig(({ mode }) => {
             background_color: '#FFF0F3',
             display: 'standalone',
             orientation: 'portrait',
-            scope: './', 
-            start_url: './', 
+            scope: '/', 
+            start_url: '/', 
             icons: [
               {
-                src: 'kimi_192.svg',
+                src: '/kimi_192.svg',
                 sizes: '192x192',
                 type: 'image/svg+xml'
               },
               {
-                src: 'kimi_512.svg',
+                src: '/kimi_512.svg',
                 sizes: '512x512',
                 type: 'image/svg+xml'
               },
               {
-                src: 'kimi_512.svg',
+                src: '/kimi_512.svg',
                 sizes: '512x512',
                 type: 'image/svg+xml',
                 purpose: 'any maskable'
