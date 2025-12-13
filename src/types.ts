@@ -48,7 +48,7 @@ export interface ProfileData {
 }
 
 export interface AppState {
-  view: 'BOOT' | 'ONBOARDING' | 'PIN' | 'HOME' | 'CALENDAR' | 'DAILY_LOG' | 'INSIGHTS' | 'SETTINGS';
+  view: 'BOOT' | 'LANDING' | 'ONBOARDING' | 'PIN' | 'HOME' | 'CALENDAR' | 'DAILY_LOG' | 'INSIGHTS' | 'SETTINGS';
   // Multi-profile state
   activeProfileId: string | null;
   profiles: Record<string, ProfileData>;

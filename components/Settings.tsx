@@ -1,7 +1,10 @@
 import React, { useRef } from 'react';
-import { Bell, Moon, Shield, Download, Upload, Trash2, ChevronRight, Lock, Sun, LogOut, UserPlus, Share2 } from 'lucide-react';
+import { Bell, Moon, Shield, Download, Upload, Trash2, ChevronRight, Lock, Sun, LogOut, UserPlus } from 'lucide-react';
+import { UserProfile } from '../types';
 
 interface SettingsProps {
+  profiles: UserProfile[];
+  onDeleteProfile: (id: string) => void;
   onExport: () => void;
   onImport: (file: File) => void;
   onDeleteData: () => void;
@@ -12,6 +15,8 @@ interface SettingsProps {
 }
 
 const Settings: React.FC<SettingsProps> = ({ 
+  profiles,
+  onDeleteProfile,
   onExport, 
   onImport, 
   onDeleteData, 
@@ -29,24 +34,6 @@ const Settings: React.FC<SettingsProps> = ({
     }
   };
 
-  const handleShareApp = async () => {
-    try {
-        const url = window.location.href;
-        if (navigator.share) {
-            await navigator.share({
-                title: 'KIMI',
-                text: 'Track your cycle privately with KIMI.',
-                url: url
-            });
-        } else {
-            await navigator.clipboard.writeText(url);
-            alert('Link copied! Open this URL in Safari to install: ' + url);
-        }
-    } catch (e) {
-        console.log('Share cancelled');
-    }
-  };
-
   return (
     <div className="flex flex-col h-full bg-[#FFF0F3] dark:bg-gray-900 overflow-y-auto no-scrollbar pb-32 transition-colors duration-300">
       <div className="p-6">
@@ -57,37 +44,45 @@ const Settings: React.FC<SettingsProps> = ({
             </button>
         </header>
 
-        {/* Install / Share Banner */}
-        <div className="w-full bg-gradient-to-r from-[#E84C7C] to-[#F47B9C] rounded-2xl p-5 mb-8 shadow-lg shadow-pink-200/50 dark:shadow-none flex items-center justify-between text-white relative overflow-hidden">
-             {/* Decorative circles */}
-             <div className="absolute -right-4 -top-4 w-16 h-16 bg-white/20 rounded-full blur-xl pointer-events-none"></div>
-             <div className="absolute -left-4 -bottom-4 w-12 h-12 bg-white/20 rounded-full blur-lg pointer-events-none"></div>
-             
-             <div className="flex items-center gap-4 relative z-10">
-                <div className="p-3 bg-white/20 backdrop-blur-md rounded-xl shadow-inner">
-                    <Share2 size={24} className="text-white" />
-                </div>
-                <div>
-                    <h3 className="font-bold text-lg leading-tight">Install App</h3>
-                    <p className="text-xs text-pink-50 font-medium">Get the full experience</p>
-                </div>
-             </div>
-             <button 
-                onClick={handleShareApp}
-                className="px-5 py-2.5 bg-white text-[#E84C7C] text-sm font-bold rounded-xl shadow-sm active:scale-95 transition-transform hover:bg-pink-50 relative z-10"
-             >
-                Install
-             </button>
-        </div>
-
         {/* Profile Management */}
         <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm p-2 mb-6 border border-pink-50 dark:border-gray-700 transition-colors">
             <div className="p-4 border-b border-gray-50 dark:border-gray-700">
                 <h3 className="font-semibold text-gray-800 dark:text-gray-100">Profile Management</h3>
             </div>
+            
+            <div className="divide-y divide-gray-50 dark:divide-gray-700">
+                {profiles.map(user => (
+                    <div key={user.id} className="p-4 flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                            <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold shadow-sm ${user.relationship === 'Self' ? 'bg-pink-100 text-[#E84C7C]' : 'bg-gray-100 text-gray-500'}`}>
+                                {user.name.charAt(0).toUpperCase()}
+                            </div>
+                            <div>
+                                <div className="text-sm font-medium text-gray-800 dark:text-gray-200">{user.name}</div>
+                                <div className="text-xs text-gray-400">{user.relationship}</div>
+                            </div>
+                        </div>
+                        {user.relationship !== 'Self' && (
+                            <button 
+                                type="button"
+                                onClick={(e) => {
+                                    e.preventDefault();
+                                    e.stopPropagation();
+                                    onDeleteProfile(user.id);
+                                }}
+                                className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors z-10 relative"
+                                title="Delete Profile"
+                            >
+                                <Trash2 size={16} />
+                            </button>
+                        )}
+                    </div>
+                ))}
+            </div>
+
             <button 
                 onClick={onAddProfile}
-                className="w-full p-4 flex items-center justify-between hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors text-left"
+                className="w-full p-4 flex items-center justify-between hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors text-left border-t border-gray-50 dark:border-gray-700"
             >
                 <div className="flex items-center gap-3 text-gray-600 dark:text-gray-300">
                 <UserPlus size={18} />

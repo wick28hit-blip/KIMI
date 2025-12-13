@@ -4,6 +4,7 @@ export interface UserProfile {
   relationship: 'Self' | 'Daughter' | 'Sister' | 'Friend' | 'Other';
   age?: number;
   pin: string; // The primary user's PIN unlocks the whole app
+  notificationsEnabled?: boolean; // New field for preference
   
   // New PMS Prediction Data
   pmsData: {
@@ -48,7 +49,7 @@ export interface ProfileData {
 }
 
 export interface AppState {
-  view: 'BOOT' | 'ONBOARDING' | 'PIN' | 'HOME' | 'CALENDAR' | 'DAILY_LOG' | 'INSIGHTS' | 'SETTINGS';
+  view: 'BOOT' | 'LANDING' | 'ONBOARDING' | 'PIN' | 'HOME' | 'CALENDAR' | 'DAILY_LOG' | 'INSIGHTS' | 'SETTINGS';
   // Multi-profile state
   activeProfileId: string | null;
   profiles: Record<string, ProfileData>;

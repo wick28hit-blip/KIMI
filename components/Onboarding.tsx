@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { User, ChevronLeft, CalendarCheck, Users, Baby } from 'lucide-react';
+import { User, ChevronLeft, CalendarCheck, Users, Baby, X } from 'lucide-react';
 import { UserProfile, CycleData, DailyLog } from '../types';
 import PinLock from './PinLock';
 import ScrollPicker from './ScrollPicker';
@@ -10,9 +10,10 @@ import { calculateNormalizedBMI } from '../utils/calculations';
 interface OnboardingProps {
   onComplete: (user: UserProfile, cycle: CycleData, initialLogs?: Record<string, DailyLog>) => void;
   isAddingProfile?: boolean; 
+  onCancel?: () => void;
 }
 
-const Onboarding: React.FC<OnboardingProps> = ({ onComplete, isAddingProfile = false }) => {
+const Onboarding: React.FC<OnboardingProps> = ({ onComplete, isAddingProfile = false, onCancel }) => {
   const [step, setStep] = useState(0);
   
   // Relationship State
@@ -126,6 +127,7 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete, isAddingProfile = f
       relationship,
       age, 
       pin: pin || '',
+      notificationsEnabled: true, // Default to true on new profile creation
       pmsData: {
         stress,
         sleep,
@@ -523,6 +525,16 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete, isAddingProfile = f
   return (
     <div className={`h-screen bg-[#FFF0F3] flex flex-col items-center relative transition-all overflow-hidden ${isPinStep ? 'p-0' : 'p-6'}`}>
       
+      {/* Cancel Button for Adding Profile */}
+      {isAddingProfile && !isPinStep && (
+          <button 
+            onClick={onCancel}
+            className="absolute top-6 right-6 w-10 h-10 flex items-center justify-center rounded-full bg-white/50 text-gray-500 hover:bg-red-50 hover:text-red-500 shadow-sm transition-all z-20"
+          >
+            <X size={20} />
+          </button>
+      )}
+
       {/* Back Button */}
       {step > 0 && !isPinStep && !editingIndex && (
         <button 

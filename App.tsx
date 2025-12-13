@@ -2,16 +2,17 @@ import React, { useState, useEffect } from 'react';
 import { UserProfile, CycleData, AppState, DailyLog, ProfileData } from './types';
 import { STORAGE_KEY, HAS_ACCOUNT_KEY, encryptData, decryptData } from './utils/crypto';
 import Onboarding from './components/Onboarding';
+import LandingPage from './components/LandingPage';
 import PinLock from './components/PinLock';
 import BubbleDashboard from './components/BubbleDashboard';
 import Settings from './components/Settings';
 import { Home, Calendar, PlusCircle, BarChart2, Droplet, Activity, Settings as SettingsIcon, Heart, Pill, Dumbbell, Wine, Cigarette, Lock, Smile, Check, ArrowLeft, Plus, Users } from 'lucide-react';
-import { format, startOfMonth, endOfMonth, eachDayOfInterval, isToday, addMonths, subMonths } from 'date-fns';
+import { format, startOfMonth, endOfMonth, eachDayOfInterval, isToday, addMonths, subMonths, differenceInDays, startOfDay, parseISO } from 'date-fns';
 import { getDayStatus } from './utils/calculations';
 
 // Notification Logic (Imports from root utils)
-import { syncProfileToIDB, getLastNotification, logNotificationSent } from './utils/db';
-import { triggerLocalNotification, checkPeriodicNotifications, checkMoodTrigger } from './utils/scheduler';
+import { syncProfileToIDB, getLastNotification, logNotificationSent } from './src/utils/db';
+import { triggerLocalNotification, checkPeriodicNotifications, checkMoodTrigger } from './src/utils/scheduler';
 
 const App: React.FC = () => {
   const [state, setState] = useState<AppState>({
@@ -94,7 +95,8 @@ const App: React.FC = () => {
     // 2. Auth Logic
     const hasAccount = localStorage.getItem(HAS_ACCOUNT_KEY);
     if (!hasAccount) {
-      setState(s => ({ ...s, view: 'ONBOARDING', darkMode: isDark }));
+      // UPDATED: Show LANDING page first for new users
+      setState(s => ({ ...s, view: 'LANDING', darkMode: isDark }));
     } else {
       setState(s => ({ ...s, view: 'PIN', darkMode: isDark }));
     }
@@ -116,7 +118,7 @@ const App: React.FC = () => {
   useEffect(() => {
     const handlePopState = (event: PopStateEvent) => {
       // If user presses back button on Android/Browser
-      if (state.view !== 'HOME' && state.view !== 'PIN' && state.view !== 'ONBOARDING' && state.view !== 'BOOT') {
+      if (state.view !== 'HOME' && state.view !== 'PIN' && state.view !== 'ONBOARDING' && state.view !== 'BOOT' && state.view !== 'LANDING') {
         // Prevent default browser back (which might exit app) and go to Home
         event.preventDefault();
         setState(s => ({ ...s, view: 'HOME' }));
@@ -124,7 +126,7 @@ const App: React.FC = () => {
     };
 
     // If we navigate to a non-root view, push a state so back button works
-    if (state.view !== 'HOME' && state.view !== 'PIN' && state.view !== 'ONBOARDING' && state.view !== 'BOOT') {
+    if (state.view !== 'HOME' && state.view !== 'PIN' && state.view !== 'ONBOARDING' && state.view !== 'BOOT' && state.view !== 'LANDING') {
         window.history.pushState({ view: state.view }, '');
     }
 
@@ -155,7 +157,7 @@ const App: React.FC = () => {
   const handleLogin = (pin: string) => {
     const encryptedData = localStorage.getItem(STORAGE_KEY);
     if (encryptedData) {
-      const data = decryptData(encryptedData, pin);
+      const data: any = decryptData(encryptedData, pin);
       
       if (data) {
         // Migration: Check if old format (single user) or new format (profiles object)
@@ -231,7 +233,7 @@ const App: React.FC = () => {
     localStorage.removeItem(HAS_ACCOUNT_KEY);
     
     setState({
-      view: 'ONBOARDING',
+      view: 'LANDING',
       user: null,
       cycle: null,
       logs: {},
@@ -252,7 +254,8 @@ const App: React.FC = () => {
     if (!isInitialSetup) {
         // We are adding a profile while logged in.
         // Rule: All profiles share the same PIN (usually the Mother/Primary User's PIN).
-        const primaryUser = (Object.values(state.profiles) as ProfileData[]).find((p: ProfileData) => p.user.relationship === 'Self')?.user;
+        const profilesList = Object.values(state.profiles) as ProfileData[];
+        const primaryUser = profilesList.find(p => p.user.relationship === 'Self')?.user;
         const existingPin = primaryUser?.pin || state.user?.pin;
 
         if (existingPin) {
@@ -301,6 +304,88 @@ const App: React.FC = () => {
       }
   };
 
+  const handleDeleteProfile = (profileId: string) => {
+    // 1. Create a shallow copy of the profiles object
+    const currentProfiles = { ...state.profiles };
+    
+    // 2. Validate the profile exists
+    if (!currentProfiles[profileId]) {
+        console.error("Attempted to delete non-existent profile:", profileId);
+        return;
+    }
+
+    const targetUser = currentProfiles[profileId].user;
+
+    // 3. Safety Check: Cannot delete the main 'Self' profile
+    if (targetUser.relationship === 'Self') {
+        alert("You cannot delete the main profile. Use 'Delete All Data' in the Danger Zone to reset the app.");
+        return;
+    }
+
+    // 4. Confirm with user
+    if (!window.confirm(`Are you sure you want to delete ${targetUser.name}'s profile? This cannot be undone.`)) {
+        return;
+    }
+
+    // 5. Perform the deletion
+    delete currentProfiles[profileId];
+
+    // 6. Determine the next active profile
+    // If the deleted profile was the active one, we must switch.
+    let nextActiveId = state.activeProfileId;
+    
+    if (state.activeProfileId === profileId || !currentProfiles[state.activeProfileId!]) {
+        // Fallback to the 'Self' profile
+        const selfProfile = Object.values(currentProfiles).find(p => p.user.relationship === 'Self');
+        
+        if (selfProfile) {
+            nextActiveId = selfProfile.user.id;
+        } else {
+            // Fallback to the first available key if Self is somehow missing (should not happen)
+            const availableIds = Object.keys(currentProfiles);
+            if (availableIds.length > 0) {
+                nextActiveId = availableIds[0];
+            } else {
+                // If no profiles left (unexpected state), reset the app
+                handleReset();
+                return;
+            }
+        }
+    }
+
+    // 7. Securely Persist to Local Storage
+    // We need the master PIN (from the Self user) to re-encrypt the data
+    const primaryUser = Object.values(currentProfiles).find(p => p.user.relationship === 'Self')?.user;
+    const pinToUse = primaryUser?.pin || state.user?.pin || '';
+
+    const storageData = {
+        profiles: currentProfiles,
+        activeProfileId: nextActiveId
+    };
+
+    try {
+        const encrypted = encryptData(storageData, pinToUse);
+        localStorage.setItem(STORAGE_KEY, encrypted);
+    } catch (e) {
+        console.error("Failed to save data after deletion", e);
+        alert("An error occurred while saving changes.");
+        return;
+    }
+
+    // 8. Update Application State
+    const nextActiveData = currentProfiles[nextActiveId!];
+    
+    setState(prev => ({
+        ...prev,
+        profiles: currentProfiles,
+        activeProfileId: nextActiveId,
+        // Update the convenience pointers to the new active user
+        user: nextActiveData ? nextActiveData.user : null,
+        cycle: nextActiveData ? nextActiveData.cycle : null,
+        logs: nextActiveData ? nextActiveData.logs : {}
+    }));
+  };
+
   const saveLog = (log: DailyLog) => {
     if (!state.activeProfileId) return;
 
@@ -334,6 +419,11 @@ const App: React.FC = () => {
   const handleAddProfileRequest = () => {
       // Go to onboarding in "Add Mode"
       setState(s => ({ ...s, view: 'ONBOARDING' }));
+  };
+
+  const handleCancelOnboarding = () => {
+      // Return to HOME if cancelling add profile
+      setState(s => ({ ...s, view: 'HOME' }));
   };
 
   // --- Data Management ---
@@ -372,7 +462,7 @@ const App: React.FC = () => {
            logs?: Record<string, DailyLog>;
         }
 
-        const json = JSON.parse(result) as ImportFormat;
+        const json: any = JSON.parse(result);
         
         // Handle Import for Multi-profile structure
         let importedProfiles: Record<string, ProfileData> = {};
@@ -383,18 +473,18 @@ const App: React.FC = () => {
             activeId = json.activeProfileId || '';
         } else if (json.user && json.cycle) {
              // Migrate old export format
-             const uid = json.user.id || 'imported_user';
+             const uid = (json.user as any).id || 'imported_user';
              
              // Migration for PMS Data defaults
-             const pmsData = json.user.pmsData || {
+             const pmsData = (json.user as any).pmsData || {
                 stress: 5, sleep: 5, anxiety: 5, depression: 5, height: 165, weight: 65, bmi: 5, diet: 5
              };
 
              const profile: ProfileData = {
                 user: { 
-                    ...json.user, 
+                    ...(json.user as any), 
                     id: uid, 
-                    relationship: json.user.relationship || 'Self',
+                    relationship: (json.user as any).relationship || 'Self',
                     pmsData 
                 },
                 cycle: json.cycle,
@@ -452,24 +542,6 @@ const App: React.FC = () => {
 
   if (state.view === 'BOOT') return <div className="min-h-screen bg-[#FFF0F3] dark:bg-gray-900" />;
   
-  if (state.view === 'ONBOARDING') {
-      // Check if we are adding a profile to an existing logged-in session
-      const isAdding = Object.keys(state.profiles).length > 0;
-      return <Onboarding onComplete={handleCreateProfile} isAddingProfile={isAdding} />;
-  }
-  
-  if (state.view === 'PIN') {
-    return (
-      <PinLock 
-        onSuccess={handleLogin} 
-        expectedPin={state.user?.pin} // This will be undefined on cold boot/logout
-        onReset={handleReset} 
-        loginError={loginError}
-        onClearLoginError={() => setLoginError(false)}
-      />
-    );
-  }
-
   const renderCalendar = () => {
     const start = startOfMonth(currentDate);
     const end = endOfMonth(currentDate);
@@ -548,7 +620,7 @@ const App: React.FC = () => {
   };
 
   const renderHome = () => {
-    const profilesList = Object.values(state.profiles);
+    const profilesList = Object.values(state.profiles) as ProfileData[];
     
     return (
         <div className="flex flex-col h-full overflow-y-auto no-scrollbar bg-[#FFF0F3] dark:bg-gray-900 transition-colors">
@@ -604,8 +676,42 @@ const App: React.FC = () => {
     const totalDays = logs.length;
     
     // 1. Water Stats
-    const totalWater = logs.reduce((sum, log) => sum + log.waterIntake, 0);
-    const avgWater = totalDays ? Math.round((totalWater / totalDays) * 10) / 10 : 0;
+    // Logic: Calculate average from the day the user joined (created profile) until today.
+    // This accounts for days where the user forgot to log (0 intake), distinguishing them from historical pre-app data.
+    
+    let avgWater = 0;
+    
+    if (state.user?.id) {
+        // User ID is timestamp of creation
+        const joinedDate = new Date(parseInt(state.user.id));
+        
+        // Sanity check: if ID isn't a timestamp (legacy), fallback to first log date or just filtering > 0
+        if (!isNaN(joinedDate.getTime())) {
+            const startDate = startOfDay(joinedDate);
+            const today = startOfDay(new Date());
+            
+            // Calculate total days since joining (inclusive of today)
+            const daysSinceJoined = differenceInDays(today, startDate) + 1;
+            const validDaysCount = Math.max(1, daysSinceJoined);
+
+            // Sum water only from logs strictly AFTER or ON the joined date
+            const totalWater = logs.reduce((sum, log) => {
+                const logDate = parseISO(log.date);
+                // We compare timestamps or date objects
+                if (logDate >= startDate) {
+                    return sum + (log.waterIntake || 0);
+                }
+                return sum;
+            }, 0);
+
+            avgWater = Math.round((totalWater / validDaysCount) * 10) / 10;
+        } else {
+             // Fallback for legacy IDs if any: Use old "days with logs" logic or just all logs
+             const waterLogs = logs.filter(l => l.waterIntake > 0);
+             const total = waterLogs.reduce((sum, l) => sum + l.waterIntake, 0);
+             avgWater = waterLogs.length ? Math.round((total / waterLogs.length) * 10) / 10 : 0;
+        }
+    }
 
     // 2. Symptom Frequency
     const symptomMap: Record<string, number> = {};
@@ -946,8 +1052,29 @@ const App: React.FC = () => {
         {state.view === 'CALENDAR' && renderCalendar()}
         {state.view === 'DAILY_LOG' && renderDailyLog()}
         {state.view === 'INSIGHTS' && renderInsights()}
+        {state.view === 'LANDING' && (
+           <LandingPage onStartTracking={() => setState(s => ({...s, view: 'ONBOARDING'}))} />
+        )}
+        {state.view === 'ONBOARDING' && (
+            <Onboarding 
+                onComplete={handleCreateProfile} 
+                isAddingProfile={Object.keys(state.profiles).length > 0} 
+                onCancel={handleCancelOnboarding}
+            />
+        )}
+        {state.view === 'PIN' && (
+          <PinLock 
+            onSuccess={handleLogin} 
+            expectedPin={state.user?.pin} 
+            onReset={handleReset} 
+            loginError={loginError}
+            onClearLoginError={() => setLoginError(false)}
+          />
+        )}
         {state.view === 'SETTINGS' && (
             <Settings 
+                profiles={(Object.values(state.profiles) as ProfileData[]).map(p => p.user)}
+                onDeleteProfile={handleDeleteProfile}
                 onExport={handleExportData}
                 onImport={handleImportData}
                 onDeleteData={() => setShowDeleteModal(true)}
@@ -986,50 +1113,54 @@ const App: React.FC = () => {
       )}
 
       {/* Bottom Nav */}
-      <nav className="absolute bottom-0 left-0 w-full bg-white dark:bg-gray-800 border-t border-pink-100 dark:border-gray-700 flex justify-between px-2 py-3 pb-[calc(1.5rem+env(safe-area-inset-bottom))] z-50 rounded-t-3xl shadow-[0_-5px_20px_rgba(232,76,124,0.1)] transition-colors">
-        <button 
-          onClick={() => setState(s => ({...s, view: 'HOME'}))}
-          className={`flex-1 flex flex-col items-center gap-1 transition-colors ${state.view === 'HOME' ? 'text-[#E84C7C]' : 'text-gray-400 dark:text-gray-500'}`}
-        >
-          <Home size={22} />
-          <span className="text-[10px] font-medium">Home</span>
-        </button>
-        <button 
-          onClick={() => setState(s => ({...s, view: 'CALENDAR'}))}
-          className={`flex-1 flex flex-col items-center gap-1 transition-colors ${state.view === 'CALENDAR' ? 'text-[#E84C7C]' : 'text-gray-400 dark:text-gray-500'}`}
-        >
-          <Calendar size={22} />
-          <span className="text-[10px] font-medium">Calendar</span>
-        </button>
-        
-        {/* Spacer for FAB */}
-        <div className="w-16" /> 
+      {(state.view !== 'LANDING' && state.view !== 'ONBOARDING' && state.view !== 'PIN') && (
+        <>
+          <nav className="absolute bottom-0 left-0 w-full bg-white dark:bg-gray-800 border-t border-pink-100 dark:border-gray-700 flex justify-between px-2 py-3 pb-[calc(1.5rem+env(safe-area-inset-bottom))] z-50 rounded-t-3xl shadow-[0_-5px_20px_rgba(232,76,124,0.1)] transition-colors">
+            <button 
+              onClick={() => setState(s => ({...s, view: 'HOME'}))}
+              className={`flex-1 flex flex-col items-center gap-1 transition-colors ${state.view === 'HOME' ? 'text-[#E84C7C]' : 'text-gray-400 dark:text-gray-500'}`}
+            >
+              <Home size={22} />
+              <span className="text-[10px] font-medium">Home</span>
+            </button>
+            <button 
+              onClick={() => setState(s => ({...s, view: 'CALENDAR'}))}
+              className={`flex-1 flex flex-col items-center gap-1 transition-colors ${state.view === 'CALENDAR' ? 'text-[#E84C7C]' : 'text-gray-400 dark:text-gray-500'}`}
+            >
+              <Calendar size={22} />
+              <span className="text-[10px] font-medium">Calendar</span>
+            </button>
+            
+            {/* Spacer for FAB */}
+            <div className="w-16" /> 
 
-        <button 
-          onClick={() => setState(s => ({...s, view: 'INSIGHTS'}))}
-          className={`flex-1 flex flex-col items-center gap-1 transition-colors ${state.view === 'INSIGHTS' ? 'text-[#E84C7C]' : 'text-gray-400 dark:text-gray-500'}`}
-        >
-          <BarChart2 size={22} />
-          <span className="text-[10px] font-medium">Insights</span>
-        </button>
-        <button 
-          onClick={() => setState(s => ({...s, view: 'SETTINGS'}))}
-          className={`flex-1 flex flex-col items-center gap-1 transition-colors ${state.view === 'SETTINGS' ? 'text-[#E84C7C]' : 'text-gray-400 dark:text-gray-500'}`}
-        >
-          <SettingsIcon size={22} />
-          <span className="text-[10px] font-medium">Settings</span>
-        </button>
-      </nav>
+            <button 
+              onClick={() => setState(s => ({...s, view: 'INSIGHTS'}))}
+              className={`flex-1 flex flex-col items-center gap-1 transition-colors ${state.view === 'INSIGHTS' ? 'text-[#E84C7C]' : 'text-gray-400 dark:text-gray-500'}`}
+            >
+              <BarChart2 size={22} />
+              <span className="text-[10px] font-medium">Insights</span>
+            </button>
+            <button 
+              onClick={() => setState(s => ({...s, view: 'SETTINGS'}))}
+              className={`flex-1 flex flex-col items-center gap-1 transition-colors ${state.view === 'SETTINGS' ? 'text-[#E84C7C]' : 'text-gray-400 dark:text-gray-500'}`}
+            >
+              <SettingsIcon size={22} />
+              <span className="text-[10px] font-medium">Settings</span>
+            </button>
+          </nav>
 
-      {/* FAB */}
-      <div className="absolute bottom-[calc(2rem+env(safe-area-inset-bottom))] left-1/2 -translate-x-1/2 z-50">
-        <button 
-          onClick={() => setState(s => ({...s, view: 'DAILY_LOG'}))}
-          className={`w-14 h-14 rounded-full shadow-lg flex items-center justify-center text-white active:scale-95 transition-transform border-4 border-[#FFF0F3] dark:border-gray-900 ${state.view === 'DAILY_LOG' ? 'bg-[#2D2D2D] dark:bg-gray-600' : 'bg-[#E84C7C] shadow-pink-300 dark:shadow-none'}`}
-        >
-          <PlusCircle size={28} />
-        </button>
-      </div>
+          {/* FAB */}
+          <div className="absolute bottom-[calc(2rem+env(safe-area-inset-bottom))] left-1/2 -translate-x-1/2 z-50">
+            <button 
+              onClick={() => setState(s => ({...s, view: 'DAILY_LOG'}))}
+              className={`w-14 h-14 rounded-full shadow-lg flex items-center justify-center text-white active:scale-95 transition-transform border-4 border-[#FFF0F3] dark:border-gray-900 ${state.view === 'DAILY_LOG' ? 'bg-[#2D2D2D] dark:bg-gray-600' : 'bg-[#E84C7C] shadow-pink-300 dark:shadow-none'}`}
+            >
+              <PlusCircle size={28} />
+            </button>
+          </div>
+        </>
+      )}
 
     </div>
   );

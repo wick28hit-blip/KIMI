@@ -10,19 +10,19 @@ export const triggerLocalNotification = (title: string, body: string, tag: strin
     if (swSelf.registration && 'showNotification' in swSelf.registration) {
       swSelf.registration.showNotification(title, {
         body,
-        icon: 'kimi_192.svg', // Changed to relative path
+        icon: '/kimi_192.svg',
         tag,
-        badge: 'kimi_192.svg', // Changed to relative path
+        badge: '/kimi_192.svg',
         vibrate: [200, 100, 200]
-      } as any); 
+      } as any); // Cast options to any to avoid strict type checks on vibrate
     } else {
-      // If we are in the Window context (Foreground)
+      // If we are in the Window context
       new Notification(title, {
         body,
-        icon: 'kimi_192.svg',
+        icon: '/kimi_192.svg',
         tag,
         vibrate: [200, 100, 200]
-      } as any); 
+      } as any); // Cast options to any
     }
   }
 };
