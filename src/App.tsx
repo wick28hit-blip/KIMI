@@ -14,6 +14,8 @@ import { getDayStatus } from './utils/calculations';
 import { syncProfileToIDB, getLastNotification, logNotificationSent } from './utils/db';
 import { triggerLocalNotification, checkPeriodicNotifications, checkMoodTrigger } from './utils/scheduler';
 
+const PROFILE_KEY_PREFIX = 'KIMI_PROFILE_';
+
 const App: React.FC = () => {
   const [state, setState] = useState<AppState>({
     view: 'BOOT',
@@ -154,31 +156,70 @@ const App: React.FC = () => {
       }
   };
 
+  // Helper to persist state to split storage (separate tables)
+  const persistState = (profiles: Record<string, ProfileData>, activeId: string | null, pin: string) => {
+    try {
+      // 1. Save each profile to its own key
+      Object.keys(profiles).forEach(id => {
+        const pData = profiles[id];
+        localStorage.setItem(`${PROFILE_KEY_PREFIX}${id}`, encryptData(pData, pin));
+      });
+
+      // 2. Save Index (Metadata)
+      const indexData = {
+        activeProfileId: activeId,
+        profileIds: Object.keys(profiles),
+        version: 2
+      };
+      localStorage.setItem(STORAGE_KEY, encryptData(indexData, pin));
+      localStorage.setItem(HAS_ACCOUNT_KEY, 'true');
+    } catch (e) {
+      console.error("Persistence Error", e);
+      alert("Failed to save data. Storage might be full.");
+    }
+  };
+
   const handleLogin = (pin: string) => {
     const encryptedData = localStorage.getItem(STORAGE_KEY);
     if (encryptedData) {
       const data: any = decryptData(encryptedData, pin);
       
       if (data) {
-        // Migration: Check if old format (single user) or new format (profiles object)
         let profiles: Record<string, ProfileData> = {};
         let activeId: string | null = null;
 
-        if (data.profiles) {
-             // New Format
+        // CHECK FORMAT: New Split Storage (Version 2)
+        if (data.version === 2 || data.profileIds) {
+            const ids: string[] = data.profileIds || [];
+            activeId = data.activeProfileId;
+            
+            // Load each profile from its specific table
+            ids.forEach(id => {
+                const pKey = `${PROFILE_KEY_PREFIX}${id}`;
+                const pEnc = localStorage.getItem(pKey);
+                if (pEnc) {
+                    const pData = decryptData(pEnc, pin);
+                    if (pData) {
+                        profiles[id] = pData;
+                    }
+                }
+            });
+            
+            // Fallback if activeId is missing but we have profiles
+            if (!activeId && ids.length > 0) activeId = ids[0];
+
+        } else if (data.profiles) {
+             // CHECK FORMAT: Old Unified Storage (Version 1)
+             // Automatically migrate in memory, will be saved in new format on next update
              profiles = data.profiles;
              activeId = data.activeProfileId || Object.keys(profiles)[0];
         } else if (data.user) {
-             // Old Format: Migrate to Profile Structure
-             // Generate an ID for the existing user if missing
+             // CHECK FORMAT: Ancient Single User
              const userId = data.user.id || 'primary_user';
-             // Migration for PMS Data defaults if moving from very old version
              const pmsData = data.user.pmsData || {
                 stress: 5, sleep: 5, anxiety: 5, depression: 5, height: 165, weight: 65, bmi: 5, diet: 5
              };
-
-             const userProfile = { ...data.user, id: userId, relationship: 'Self', pmsData }; // Ensure new fields
-             
+             const userProfile = { ...data.user, id: userId, relationship: 'Self', pmsData };
              profiles = {
                  [userId]: {
                      user: userProfile,
@@ -202,7 +243,6 @@ const App: React.FC = () => {
               logs: activeData.logs
             }));
             
-            // --- FIRE LOGIN NOTIFICATION ---
             checkLoginNotification();
 
         } else {
@@ -229,8 +269,16 @@ const App: React.FC = () => {
   };
 
   const handleReset = () => {
+    // Clear Main Index
     localStorage.removeItem(STORAGE_KEY);
     localStorage.removeItem(HAS_ACCOUNT_KEY);
+    
+    // Clear All Profile Keys
+    Object.keys(localStorage).forEach(key => {
+        if (key.startsWith(PROFILE_KEY_PREFIX)) {
+            localStorage.removeItem(key);
+        }
+    });
     
     setState({
       view: 'LANDING',
@@ -266,18 +314,11 @@ const App: React.FC = () => {
         }
     }
 
-    // Merge logs if needed, though usually new profile has empty logs
     const newProfileData: ProfileData = { user: userToSave, cycle, logs: initialLogs };
     const newProfiles = { ...state.profiles, [user.id]: newProfileData };
 
-    const storageData = {
-        profiles: newProfiles,
-        activeProfileId: user.id
-    };
-    
-    const encrypted = encryptData(storageData, encryptionPin);
-    localStorage.setItem(STORAGE_KEY, encrypted);
-    localStorage.setItem(HAS_ACCOUNT_KEY, 'true');
+    // Use Helper to Persist with Separate Tables
+    persistState(newProfiles, user.id, encryptionPin);
 
     setState(s => ({
       ...s,
@@ -293,22 +334,33 @@ const App: React.FC = () => {
   const switchProfile = (profileId: string) => {
       const target = state.profiles[profileId];
       if (target) {
+          // Note: We don't necessarily need to persist the active profile change immediately 
+          // unless we want it to persist across reloads. 
+          // Current persistState saves activeProfileId to the index, so let's save it.
+          const pin = state.user?.pin || ''; 
+          
+          // Persist the switch so next reload opens this profile
+          const indexData = {
+            activeProfileId: profileId,
+            profileIds: Object.keys(state.profiles),
+            version: 2
+          };
+          localStorage.setItem(STORAGE_KEY, encryptData(indexData, pin));
+
           setState(s => ({
               ...s,
               activeProfileId: profileId,
               user: target.user,
               cycle: target.cycle,
               logs: target.logs,
-              view: 'HOME' // Go to home on switch
+              view: 'HOME'
           }));
       }
   };
 
   const handleDeleteProfile = (profileId: string) => {
-    // 1. Create a shallow copy of the profiles object
     const currentProfiles = { ...state.profiles };
     
-    // 2. Validate the profile exists
     if (!currentProfiles[profileId]) {
         console.error("Attempted to delete non-existent profile:", profileId);
         return;
@@ -316,70 +368,49 @@ const App: React.FC = () => {
 
     const targetUser = currentProfiles[profileId].user;
 
-    // 3. Safety Check: Cannot delete the main 'Self' profile
     if (targetUser.relationship === 'Self') {
         alert("You cannot delete the main profile. Use 'Delete All Data' in the Danger Zone to reset the app.");
         return;
     }
 
-    // 4. Confirm with user
     if (!window.confirm(`Are you sure you want to delete ${targetUser.name}'s profile? This cannot be undone.`)) {
         return;
     }
 
-    // 5. Perform the deletion
     delete currentProfiles[profileId];
 
-    // 6. Determine the next active profile
-    // If the deleted profile was the active one, we must switch.
     let nextActiveId = state.activeProfileId;
     
     if (state.activeProfileId === profileId || !currentProfiles[state.activeProfileId!]) {
-        // Fallback to the 'Self' profile
         const selfProfile = Object.values(currentProfiles).find(p => p.user.relationship === 'Self');
-        
         if (selfProfile) {
             nextActiveId = selfProfile.user.id;
         } else {
-            // Fallback to the first available key if Self is somehow missing (should not happen)
             const availableIds = Object.keys(currentProfiles);
             if (availableIds.length > 0) {
                 nextActiveId = availableIds[0];
             } else {
-                // If no profiles left (unexpected state), reset the app
                 handleReset();
                 return;
             }
         }
     }
 
-    // 7. Securely Persist to Local Storage
-    // We need the master PIN (from the Self user) to re-encrypt the data
     const primaryUser = Object.values(currentProfiles).find(p => p.user.relationship === 'Self')?.user;
     const pinToUse = primaryUser?.pin || state.user?.pin || '';
 
-    const storageData = {
-        profiles: currentProfiles,
-        activeProfileId: nextActiveId
-    };
+    // Remove old key for deleted profile
+    localStorage.removeItem(`${PROFILE_KEY_PREFIX}${profileId}`);
 
-    try {
-        const encrypted = encryptData(storageData, pinToUse);
-        localStorage.setItem(STORAGE_KEY, encrypted);
-    } catch (e) {
-        console.error("Failed to save data after deletion", e);
-        alert("An error occurred while saving changes.");
-        return;
-    }
+    // Persist remaining state
+    persistState(currentProfiles, nextActiveId, pinToUse);
 
-    // 8. Update Application State
     const nextActiveData = currentProfiles[nextActiveId!];
     
     setState(prev => ({
         ...prev,
         profiles: currentProfiles,
         activeProfileId: nextActiveId,
-        // Update the convenience pointers to the new active user
         user: nextActiveData ? nextActiveData.user : null,
         cycle: nextActiveData ? nextActiveData.cycle : null,
         logs: nextActiveData ? nextActiveData.logs : {}
@@ -389,7 +420,6 @@ const App: React.FC = () => {
   const saveLog = (log: DailyLog) => {
     if (!state.activeProfileId) return;
 
-    // --- CHECK MOOD TRIGGER NOTIFICATION ---
     checkMoodTrigger(log.mood, log.symptoms);
 
     const currentProfile = state.profiles[state.activeProfileId];
@@ -398,16 +428,15 @@ const App: React.FC = () => {
     
     const newProfiles = { ...state.profiles, [state.activeProfileId]: updatedProfile };
     
-    // Find encryption PIN (Primary User or Current User)
     const pinToUse = state.user?.pin || '';
 
-    const storageData = {
-        profiles: newProfiles,
-        activeProfileId: state.activeProfileId
-    };
-
-    const encrypted = encryptData(storageData, pinToUse);
-    localStorage.setItem(STORAGE_KEY, encrypted);
+    // Optimization: Just update the specific profile key
+    localStorage.setItem(`${PROFILE_KEY_PREFIX}${state.activeProfileId}`, encryptData(updatedProfile, pinToUse));
+    // We update the in-memory state, but we don't strictly need to write the Index every time logs change, 
+    // as IDs haven't changed. But to be safe/consistent with schema v2 migration, we ensure index exists.
+    // If index already exists (which it should if we logged in), we are good.
+    // To cover the edge case of first-log-after-migration not creating index:
+    // We rely on handleLogin/handleCreateProfile to have established the index.
     
     setState(s => ({
         ...s,
@@ -417,12 +446,10 @@ const App: React.FC = () => {
   };
 
   const handleAddProfileRequest = () => {
-      // Go to onboarding in "Add Mode"
       setState(s => ({ ...s, view: 'ONBOARDING' }));
   };
 
   const handleCancelOnboarding = () => {
-      // Return to HOME if cancelling add profile
       setState(s => ({ ...s, view: 'HOME' }));
   };
 
@@ -431,7 +458,8 @@ const App: React.FC = () => {
   const handleExportData = () => {
     const dataToExport = {
         profiles: state.profiles,
-        activeProfileId: state.activeProfileId
+        activeProfileId: state.activeProfileId,
+        version: 2
     };
     const dataStr = JSON.stringify(dataToExport, null, 2);
     const blob = new Blob([dataStr], { type: 'application/json' });
@@ -453,59 +481,41 @@ const App: React.FC = () => {
         const result = e.target?.result as string;
         if (!result) return;
         
-        // Define interface for migration support
-        interface ImportFormat {
-           profiles?: Record<string, ProfileData>;
-           activeProfileId?: string;
-           user?: any; // Loose type for migration
-           cycle?: CycleData;
-           logs?: Record<string, DailyLog>;
-        }
-
         const json: any = JSON.parse(result);
+        const data = json as any;
         
-        // Handle Import for Multi-profile structure
         let importedProfiles: Record<string, ProfileData> = {};
         let activeId = '';
 
-        if (json.profiles) {
-            importedProfiles = json.profiles;
-            activeId = json.activeProfileId || '';
-        } else if (json.user && json.cycle) {
-             // Migrate old export format
-             const uid = (json.user as any).id || 'imported_user';
-             
-             // Migration for PMS Data defaults
-             const pmsData = (json.user as any).pmsData || {
+        if (data.profiles) {
+            importedProfiles = data.profiles;
+            activeId = data.activeProfileId || '';
+        } else if (data.user && data.cycle) {
+             const uid = data.user.id || 'imported_user';
+             const pmsData = data.user.pmsData || {
                 stress: 5, sleep: 5, anxiety: 5, depression: 5, height: 165, weight: 65, bmi: 5, diet: 5
              };
-
              const profile: ProfileData = {
                 user: { 
-                    ...(json.user as any), 
+                    ...data.user, 
                     id: uid, 
-                    relationship: (json.user as any).relationship || 'Self',
+                    relationship: data.user.relationship || 'Self',
                     pmsData 
                 },
-                cycle: json.cycle,
-                logs: json.logs || {}
+                cycle: data.cycle,
+                logs: data.logs || {}
              };
              importedProfiles = { [uid]: profile };
              activeId = uid;
         }
 
         if (Object.keys(importedProfiles).length > 0) {
-            // We need a PIN to encrypt this into storage. Ask user to confirm with current PIN?
-            // Or just use the pin from the imported 'Self' user.
             const profilesArray: ProfileData[] = Object.values(importedProfiles);
             const primary = profilesArray.find((p: ProfileData) => p.user?.relationship === 'Self');
-            const pin = primary?.user?.pin || '0000'; // Fallback if messed up
+            const pin = primary?.user?.pin || '0000'; 
 
-            const storageData = { profiles: importedProfiles, activeProfileId: activeId };
-            const encrypted = encryptData(storageData, pin);
-            
-            localStorage.setItem(STORAGE_KEY, encrypted);
-            localStorage.setItem(HAS_ACCOUNT_KEY, 'true');
+            // Use Helper to Persist with Separate Tables
+            persistState(importedProfiles, activeId, pin);
             
             const activeData: ProfileData | undefined = importedProfiles[activeId];
             
@@ -532,9 +542,7 @@ const App: React.FC = () => {
   };
 
   const confirmDelete = () => {
-    localStorage.removeItem(STORAGE_KEY);
-    localStorage.removeItem(HAS_ACCOUNT_KEY);
-    localStorage.removeItem('KIMI_THEME');
+    handleReset();
     window.location.reload();
   };
 

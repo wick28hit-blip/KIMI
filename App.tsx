@@ -463,32 +463,33 @@ const App: React.FC = () => {
         }
 
         const json: any = JSON.parse(result);
+        const data = json as any;
         
         // Handle Import for Multi-profile structure
         let importedProfiles: Record<string, ProfileData> = {};
         let activeId = '';
 
-        if (json.profiles) {
-            importedProfiles = json.profiles;
-            activeId = json.activeProfileId || '';
-        } else if (json.user && json.cycle) {
+        if (data.profiles) {
+            importedProfiles = data.profiles;
+            activeId = data.activeProfileId || '';
+        } else if (data.user && data.cycle) {
              // Migrate old export format
-             const uid = (json.user as any).id || 'imported_user';
+             const uid = data.user.id || 'imported_user';
              
              // Migration for PMS Data defaults
-             const pmsData = (json.user as any).pmsData || {
+             const pmsData = data.user.pmsData || {
                 stress: 5, sleep: 5, anxiety: 5, depression: 5, height: 165, weight: 65, bmi: 5, diet: 5
              };
 
              const profile: ProfileData = {
                 user: { 
-                    ...(json.user as any), 
+                    ...data.user, 
                     id: uid, 
-                    relationship: (json.user as any).relationship || 'Self',
+                    relationship: data.user.relationship || 'Self',
                     pmsData 
                 },
-                cycle: json.cycle,
-                logs: json.logs || {}
+                cycle: data.cycle,
+                logs: data.logs || {}
              };
              importedProfiles = { [uid]: profile };
              activeId = uid;
