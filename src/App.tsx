@@ -6,6 +6,7 @@ import LandingPage from './components/LandingPage';
 import PinLock from './components/PinLock';
 import BubbleDashboard from './components/BubbleDashboard';
 import Settings from './components/Settings';
+import SplashScreen from './components/SplashScreen';
 import { Home, Calendar, PlusCircle, BarChart2, Droplet, Activity, Settings as SettingsIcon, Heart, Pill, Dumbbell, Wine, Cigarette, Lock, Smile, Check, ArrowLeft, Plus, Users } from 'lucide-react';
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, isToday, addMonths, subMonths, differenceInDays, startOfDay, parseISO } from 'date-fns';
 import { getDayStatus } from './utils/calculations';
@@ -18,7 +19,7 @@ const PROFILE_KEY_PREFIX = 'KIMI_PROFILE_';
 
 const App: React.FC = () => {
   const [state, setState] = useState<AppState>({
-    view: 'BOOT',
+    view: 'SPLASH',
     user: null,
     cycle: null,
     logs: {},
@@ -81,9 +82,8 @@ const App: React.FC = () => {
   }, [state.user, state.cycle, state.logs, state.activeProfileId]);
 
 
-  // Load Data and Theme
+  // Load Theme immediately
   useEffect(() => {
-    // 1. Theme Logic
     const storedTheme = localStorage.getItem('KIMI_THEME');
     const isDark = storedTheme === 'dark';
     if (isDark) {
@@ -92,15 +92,6 @@ const App: React.FC = () => {
     } else {
         document.documentElement.classList.remove('dark');
         document.body.classList.remove('dark');
-    }
-
-    // 2. Auth Logic
-    const hasAccount = localStorage.getItem(HAS_ACCOUNT_KEY);
-    if (!hasAccount) {
-      // UPDATED: Show LANDING page first for new users
-      setState(s => ({ ...s, view: 'LANDING', darkMode: isDark }));
-    } else {
-      setState(s => ({ ...s, view: 'PIN', darkMode: isDark }));
     }
   }, []);
 
@@ -120,7 +111,7 @@ const App: React.FC = () => {
   useEffect(() => {
     const handlePopState = (event: PopStateEvent) => {
       // If user presses back button on Android/Browser
-      if (state.view !== 'HOME' && state.view !== 'PIN' && state.view !== 'ONBOARDING' && state.view !== 'BOOT' && state.view !== 'LANDING') {
+      if (state.view !== 'HOME' && state.view !== 'PIN' && state.view !== 'ONBOARDING' && state.view !== 'BOOT' && state.view !== 'LANDING' && state.view !== 'SPLASH') {
         // Prevent default browser back (which might exit app) and go to Home
         event.preventDefault();
         setState(s => ({ ...s, view: 'HOME' }));
@@ -128,7 +119,7 @@ const App: React.FC = () => {
     };
 
     // If we navigate to a non-root view, push a state so back button works
-    if (state.view !== 'HOME' && state.view !== 'PIN' && state.view !== 'ONBOARDING' && state.view !== 'BOOT' && state.view !== 'LANDING') {
+    if (state.view !== 'HOME' && state.view !== 'PIN' && state.view !== 'ONBOARDING' && state.view !== 'BOOT' && state.view !== 'LANDING' && state.view !== 'SPLASH') {
         window.history.pushState({ view: state.view }, '');
     }
 
@@ -138,6 +129,19 @@ const App: React.FC = () => {
 
   const toggleDarkMode = () => {
       setState(s => ({ ...s, darkMode: !s.darkMode }));
+  };
+
+  const handleSplashComplete = () => {
+    const storedTheme = localStorage.getItem('KIMI_THEME');
+    const isDark = storedTheme === 'dark';
+    
+    // Auth Logic
+    const hasAccount = localStorage.getItem(HAS_ACCOUNT_KEY);
+    if (!hasAccount) {
+      setState(s => ({ ...s, view: 'LANDING', darkMode: isDark }));
+    } else {
+      setState(s => ({ ...s, view: 'PIN', darkMode: isDark }));
+    }
   };
 
   const checkLoginNotification = async () => {
@@ -481,8 +485,7 @@ const App: React.FC = () => {
         const result = e.target?.result as string;
         if (!result) return;
         
-        const json: any = JSON.parse(result);
-        const data = json as any;
+        const data: any = JSON.parse(result);
         
         let importedProfiles: Record<string, ProfileData> = {};
         let activeId = '';
@@ -510,14 +513,14 @@ const App: React.FC = () => {
         }
 
         if (Object.keys(importedProfiles).length > 0) {
-            const profilesArray: ProfileData[] = Object.values(importedProfiles);
-            const primary = profilesArray.find((p: ProfileData) => p.user?.relationship === 'Self');
+            const profilesArray = Object.values(importedProfiles) as any[];
+            const primary = profilesArray.find((p: any) => p.user?.relationship === 'Self');
             const pin = primary?.user?.pin || '0000'; 
 
             // Use Helper to Persist with Separate Tables
             persistState(importedProfiles, activeId, pin);
             
-            const activeData: ProfileData | undefined = importedProfiles[activeId];
+            const activeData = importedProfiles[activeId] as any;
             
             setState(s => ({
                 ...s,
@@ -546,8 +549,33 @@ const App: React.FC = () => {
     window.location.reload();
   };
 
+  // --- Notifications Test ---
+  const handleTestNotification = () => {
+      // Re-request in case it was dismissed (some browsers allow re-prompt on user action)
+      if (Notification.permission !== 'granted') {
+          Notification.requestPermission().then(permission => {
+              if (permission === 'granted') {
+                  triggerLocalNotification(
+                      "KIMI Test",
+                      "Notifications are working correctly on this device!",
+                      "test-notification"
+                  );
+              } else {
+                  alert("Notifications are disabled in your browser settings. Please enable them to receive alerts.");
+              }
+          });
+      } else {
+          triggerLocalNotification(
+              "KIMI Test",
+              "Notifications are working correctly on this device!",
+              "test-notification"
+          );
+      }
+  };
+
   // --- Views ---
 
+  if (state.view === 'SPLASH') return <SplashScreen onComplete={handleSplashComplete} />;
   if (state.view === 'BOOT') return <div className="min-h-screen bg-[#FFF0F3] dark:bg-gray-900" />;
   
   const renderCalendar = () => {
@@ -1090,6 +1118,7 @@ const App: React.FC = () => {
                 onToggleDarkMode={toggleDarkMode}
                 onLogout={handleLogout}
                 onAddProfile={handleAddProfileRequest}
+                onTestNotification={handleTestNotification}
             />
         )}
       </main>

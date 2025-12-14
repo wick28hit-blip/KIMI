@@ -12,6 +12,7 @@ interface SettingsProps {
   onToggleDarkMode: () => void;
   onLogout: () => void;
   onAddProfile: () => void;
+  onTestNotification: () => void;
 }
 
 const Settings: React.FC<SettingsProps> = ({ 
@@ -23,7 +24,8 @@ const Settings: React.FC<SettingsProps> = ({
   isDarkMode, 
   onToggleDarkMode,
   onLogout,
-  onAddProfile
+  onAddProfile,
+  onTestNotification
 }) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -166,10 +168,12 @@ const Settings: React.FC<SettingsProps> = ({
                 <Bell size={18} />
                 <span className="text-sm font-medium">Notifications</span>
             </div>
-            {/* Mock Toggle - Active */}
-            <div className="w-11 h-6 bg-[#E84C7C] rounded-full relative cursor-pointer">
-                <div className="absolute right-1 top-1 w-4 h-4 bg-white rounded-full shadow-sm" />
-            </div>
+            <button 
+                onClick={onTestNotification}
+                className="text-xs font-bold text-[#E84C7C] border border-pink-100 dark:border-pink-900/50 bg-pink-50 dark:bg-pink-900/20 px-3 py-1 rounded-full hover:bg-pink-100 dark:hover:bg-pink-900/40 transition-colors"
+            >
+                Test
+            </button>
             </div>
         </div>
 
