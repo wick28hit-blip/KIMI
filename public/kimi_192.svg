@@ -1,5 +1,4 @@
 <svg width="192" height="192" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
-  <rect width="512" height="512" rx="110" fill="url(#grad2)" />
   <defs>
     <linearGradient id="grad2" x1="0%" y1="0%" x2="0%" y2="100%">
       <stop offset="0%" stop-color="#00F5CC"/>
@@ -7,10 +6,19 @@
     </linearGradient>
   </defs>
 
-  <g transform="translate(50,120) scale(1.15)" fill="none" stroke="#1E5A52" stroke-width="14" stroke-linecap="round" stroke-linejoin="round">
+  <rect width="512" height="512" rx="110" fill="url(#grad2)" />
+
+  <g transform="translate(40,130) scale(1.05)"
+     fill="none"
+     stroke="#1E5A52"
+     stroke-width="14"
+     stroke-linecap="round"
+     stroke-linejoin="round">
+
     <path d="M40 40 L40 260 M40 150 L120 40 M40 150 L130 260" />
     <path d="M170 40 L170 260" />
-    <path d="M230 260 L230 40 L290 180 L350 40 L350 260" />
-    <path d="M400 40 L400 260" />
+    <path d="M230 260 L230 40 L300 180 L370 40 L370 260" />
+    <path d="M420 40 L420 260" />
+
   </g>
 </svg>
