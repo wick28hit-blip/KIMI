@@ -7,12 +7,12 @@ interface LandingPageProps {
 
 const LandingPage: React.FC<LandingPageProps> = ({ onStartTracking }) => {
   return (
-    <div className="min-h-screen bg-gradient-to-b from-[#FFF0F3] to-white dark:from-gray-900 dark:to-gray-800 flex flex-col relative overflow-y-auto no-scrollbar">
+    <div className="h-full bg-gradient-to-b from-[#FFF0F3] to-white dark:from-gray-900 dark:to-gray-800 flex flex-col relative overflow-y-auto no-scrollbar">
       {/* Background Decor */}
       <div className="absolute top-[-100px] right-[-100px] w-64 h-64 bg-pink-200/50 rounded-full blur-3xl pointer-events-none opacity-60"></div>
       <div className="absolute top-[20%] left-[-50px] w-48 h-48 bg-purple-200/50 rounded-full blur-3xl pointer-events-none opacity-60"></div>
 
-      <div className="flex-1 flex flex-col px-6 pt-16 pb-10">
+      <div className="flex-1 flex flex-col px-6 pt-16 pb-10 z-10">
         
         {/* Badge */}
         <div className="flex justify-center mb-8 animate-in fade-in slide-in-from-top-4 duration-700">
