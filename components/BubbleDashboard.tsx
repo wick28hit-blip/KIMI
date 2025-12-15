@@ -219,7 +219,7 @@ const BubbleDashboard: React.FC<DashboardProps> = ({ cycleData, user }) => {
 
                     <div className="flex items-center gap-2 text-[10px] text-gray-400 justify-center">
                         <Info size={12} />
-                        <span>Scores > 4 contribute significantly to delay</span>
+                        <span>Scores more than 4 contribute significantly to delay</span>
                     </div>
                 </div>
             </div>
