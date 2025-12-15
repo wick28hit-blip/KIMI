@@ -3,37 +3,47 @@ export interface UserProfile {
   name: string;
   relationship: 'Self' | 'Daughter' | 'Sister' | 'Friend' | 'Other';
   age?: number;
-  pin: string; // The primary user's PIN unlocks the whole app
-  notificationsEnabled?: boolean; // New field for preference
+  pin: string;
+  notificationsEnabled?: boolean;
   
-  // New PMS Prediction Data
   pmsData: {
-    stress: number;      // 0-10
-    sleep: number;       // 0-10 (0=Good, 10=Bad/Issues to match risk formula weights)
-    anxiety: number;     // 0-10
-    depression: number;  // 0-10
-    height: number;      // cm
-    weight: number;      // kg
-    bmi: number;         // Normalized 0-10
-    diet: number;        // 0-10 (Defaulted for formula)
+    stress: number;
+    sleep: number;
+    anxiety: number;
+    depression: number;
+    height: number;
+    weight: number;
+    bmi: number;
+    diet: number;
   };
 }
 
 export interface CycleData {
-  lastPeriodDate: string; // ISO Date string
+  lastPeriodDate: string;
   cycleLength: number;
   periodDuration: number;
 }
 
+export interface SymptomEntry {
+  name: string;
+  intensity: number; // 1-4 stars
+  category: 'Head' | 'Body' | 'Cervix' | 'Fluid' | 'Abdomen' | 'Mental';
+}
+
 export interface DailyLog {
-  date: string; // YYYY-MM-DD
-  waterIntake: number; // glasses
+  date: string;
+  waterIntake: number; // ml
+  waterTarget: number; // ml (default 2000)
+  sleepDuration: number; // minutes
+  sleepTarget: number; // minutes (default 480 = 8h)
   flow?: 'Spotting' | 'Light' | 'Medium' | 'Heavy' | null;
-  mood: string[]; // Changed to array for multi-select
-  symptoms: string[];
-  // New Tracking Fields
+  detailedSymptoms: SymptomEntry[]; 
+  mood: string[]; 
+  symptoms: string[]; 
   medication: boolean;
   didExercise: boolean;
+  exerciseType?: string;
+  exerciseDuration?: number; // minutes
   habits: {
     smoked: boolean;
     drank: boolean;
@@ -46,14 +56,22 @@ export interface ProfileData {
   user: UserProfile;
   cycle: CycleData;
   logs: Record<string, DailyLog>;
+  reminders?: ReminderConfig[];
+}
+
+export interface ReminderConfig {
+  id: string;
+  label: string;
+  time: string; // "HH:mm"
+  isEnabled: boolean;
+  category: 'Period & fertility' | 'Medicine' | 'Lifestyle' | 'Exercise';
+  selectedDays?: number[]; // 0=Sun, 1=Mon, ..., 6=Sat
 }
 
 export interface AppState {
-  view: 'BOOT' | 'SPLASH' | 'LANDING' | 'ONBOARDING' | 'PIN' | 'HOME' | 'CALENDAR' | 'DAILY_LOG' | 'INSIGHTS' | 'SETTINGS';
-  // Multi-profile state
+  view: 'BOOT' | 'SPLASH' | 'LANDING' | 'ONBOARDING' | 'PIN' | 'HOME' | 'CALENDAR' | 'DAILY_LOG' | 'INSIGHTS' | 'SETTINGS' | 'MINE';
   activeProfileId: string | null;
   profiles: Record<string, ProfileData>;
-  // Derived state for the active view (convenience)
   user: UserProfile | null;
   cycle: CycleData | null;
   logs: Record<string, DailyLog>;
@@ -76,4 +94,11 @@ export interface PMSAnalysis {
   severity: PMSRiskLevel;
   minDelay: number;
   maxDelay: number;
+}
+
+export interface YogaExercise {
+  name: string;
+  description: string;
+  durationSeconds: number;
+  difficulty: 'Beginner' | 'Intermediate' | 'Advanced';
 }

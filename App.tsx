@@ -6,18 +6,24 @@ import LandingPage from './components/LandingPage';
 import PinLock from './components/PinLock';
 import BubbleDashboard from './components/BubbleDashboard';
 import Settings from './components/Settings';
+import MinePage from './components/MinePage';
 import SplashScreen from './components/SplashScreen';
-import { Home, Calendar, PlusCircle, BarChart2, Droplet, Activity, Settings as SettingsIcon, Heart, Pill, Dumbbell, Wine, Cigarette, Lock, Smile, Check, ArrowLeft, Plus, Users } from 'lucide-react';
-import { format, startOfMonth, endOfMonth, eachDayOfInterval, isToday, addMonths, subMonths, differenceInDays, startOfDay, parseISO } from 'date-fns';
+import DailyLogView from './components/DailyLog';
+import { Home, Calendar, PlusCircle, BarChart2, Activity, Settings as SettingsIcon, Smile, Plus, User, Droplet, Moon, Flame, Dumbbell } from 'lucide-react';
+import { format, startOfMonth, endOfMonth, eachDayOfInterval, isToday, addMonths, subMonths } from 'date-fns';
 import { getDayStatus } from './utils/calculations';
 
 // Notification Logic (Imports from root utils)
-import { syncProfileToIDB, getLastNotification, logNotificationSent } from './src/utils/db';
-import { triggerLocalNotification, checkPeriodicNotifications, checkMoodTrigger } from './src/utils/scheduler';
+import { syncProfileToIDB, getLastNotification, logNotificationSent } from './utils/db';
+import { triggerLocalNotification, checkPeriodicNotifications, checkMoodTrigger } from './utils/scheduler';
 
-const PROFILE_KEY_PREFIX = 'KIMI_PROFILE_';
+// --- STORAGE CONSTANTS ---
+// Separating data into distinct "tables" (keys) prevents large object merging issues
+const USER_KEY_PREFIX = 'KIMI_USER_'; // Stores UserProfile, CycleData, Reminders
+const LOGS_KEY_PREFIX = 'KIMI_LOGS_'; // Stores DailyLogs map
+const LEGACY_PROFILE_KEY_PREFIX = 'KIMI_PROFILE_'; // For backward compatibility migration
 
-const App: React.FC = () => {
+export default function App() {
   const [state, setState] = useState<AppState>({
     view: 'SPLASH',
     user: null,
@@ -30,28 +36,23 @@ const App: React.FC = () => {
 
   const [currentDate, setCurrentDate] = useState(new Date());
   const [loginError, setLoginError] = useState(false);
-  
-  // Custom Modal State
   const [showDeleteModal, setShowDeleteModal] = useState(false);
 
   // --- NOTIFICATION SETUP ---
   useEffect(() => {
-    // 1. Request Permission
     if ('Notification' in window && Notification.permission === 'default') {
         Notification.requestPermission();
     }
 
-    // 2. Register Periodic Sync (if supported)
     const registerPeriodicSync = async () => {
         if ('serviceWorker' in navigator) {
             const registration = await navigator.serviceWorker.ready;
             if ('periodicSync' in registration) {
                 try {
-                    // @ts-ignore - periodicsync types are experimental
+                    // @ts-ignore
                     await registration.periodicSync.register('kimi-pms-notification-sync', {
                         minInterval: 10 * 60 * 1000, // 10 minutes
                     });
-                    console.log("Periodic Sync Registered");
                 } catch (e) {
                     console.log("Periodic Sync not supported/allowed", e);
                 }
@@ -60,16 +61,14 @@ const App: React.FC = () => {
     };
     registerPeriodicSync();
 
-    // 3. Foreground Timer Interval (Fallback for 10 min checks)
     const intervalId = setInterval(() => {
-        // Send signal to SW or check directly
         checkPeriodicNotifications();
-    }, 10 * 60 * 1000); // 10 minutes
+    }, 10 * 60 * 1000); 
 
     return () => clearInterval(intervalId);
   }, []);
 
-  // --- SYNC STATE TO INDEXEDDB FOR SW ---
+  // --- SYNC STATE TO INDEXEDDB ---
   useEffect(() => {
     if (state.user && state.cycle && state.activeProfileId) {
         const profileData: ProfileData = {
@@ -81,8 +80,7 @@ const App: React.FC = () => {
     }
   }, [state.user, state.cycle, state.logs, state.activeProfileId]);
 
-
-  // Load Theme immediately
+  // Theme Handling
   useEffect(() => {
     const storedTheme = localStorage.getItem('KIMI_THEME');
     const isDark = storedTheme === 'dark';
@@ -95,7 +93,6 @@ const App: React.FC = () => {
     }
   }, []);
 
-  // Sync Dark Mode changes
   useEffect(() => {
       localStorage.setItem('KIMI_THEME', state.darkMode ? 'dark' : 'light');
       if (state.darkMode) {
@@ -107,18 +104,15 @@ const App: React.FC = () => {
       }
   }, [state.darkMode]);
 
-  // PWA Hardware Back Button Handling
+  // Navigation Handling
   useEffect(() => {
     const handlePopState = (event: PopStateEvent) => {
-      // If user presses back button on Android/Browser
       if (state.view !== 'HOME' && state.view !== 'PIN' && state.view !== 'ONBOARDING' && state.view !== 'BOOT' && state.view !== 'LANDING' && state.view !== 'SPLASH') {
-        // Prevent default browser back (which might exit app) and go to Home
         event.preventDefault();
         setState(s => ({ ...s, view: 'HOME' }));
       }
     };
 
-    // If we navigate to a non-root view, push a state so back button works
     if (state.view !== 'HOME' && state.view !== 'PIN' && state.view !== 'ONBOARDING' && state.view !== 'BOOT' && state.view !== 'LANDING' && state.view !== 'SPLASH') {
         window.history.pushState({ view: state.view }, '');
     }
@@ -127,16 +121,13 @@ const App: React.FC = () => {
     return () => window.removeEventListener('popstate', handlePopState);
   }, [state.view]);
 
-  const toggleDarkMode = () => {
-      setState(s => ({ ...s, darkMode: !s.darkMode }));
-  };
+  const toggleDarkMode = () => setState(s => ({ ...s, darkMode: !s.darkMode }));
 
   const handleSplashComplete = () => {
     const storedTheme = localStorage.getItem('KIMI_THEME');
     const isDark = storedTheme === 'dark';
-    
-    // Auth Logic
     const hasAccount = localStorage.getItem(HAS_ACCOUNT_KEY);
+    
     if (!hasAccount) {
       setState(s => ({ ...s, view: 'LANDING', darkMode: isDark }));
     } else {
@@ -145,8 +136,6 @@ const App: React.FC = () => {
   };
 
   const checkLoginNotification = async () => {
-      // Rule 1: "Log Today" Notification upon Login
-      // Logic: Once per day
       const lastLoginNotif = await getLastNotification('LOGIN');
       const isNewDay = !lastLoginNotif || (new Date(lastLoginNotif).getDate() !== new Date().getDate());
       
@@ -160,20 +149,31 @@ const App: React.FC = () => {
       }
   };
 
-  // Helper to persist state to split storage (separate tables)
-  const persistState = (profiles: Record<string, ProfileData>, activeId: string | null, pin: string) => {
+  // --- STORAGE HELPERS ---
+
+  const saveProfileDataToStorage = (id: string, data: ProfileData, pin: string) => {
+    // 1. Save User Metadata (User info, Cycle settings)
+    const userPayload = {
+      user: data.user,
+      cycle: data.cycle,
+      reminders: data.reminders
+    };
+    localStorage.setItem(`${USER_KEY_PREFIX}${id}`, encryptData(userPayload, pin));
+
+    // 2. Save Logs separately
+    localStorage.setItem(`${LOGS_KEY_PREFIX}${id}`, encryptData(data.logs, pin));
+  };
+
+  const persistAllProfiles = (profiles: Record<string, ProfileData>, activeId: string | null, pin: string) => {
     try {
-      // 1. Save each profile to its own key
       Object.keys(profiles).forEach(id => {
-        const pData = profiles[id];
-        localStorage.setItem(`${PROFILE_KEY_PREFIX}${id}`, encryptData(pData, pin));
+        saveProfileDataToStorage(id, profiles[id], pin);
       });
 
-      // 2. Save Index (Metadata)
       const indexData = {
         activeProfileId: activeId,
         profileIds: Object.keys(profiles),
-        version: 2
+        version: 3 // Version 3 uses split storage
       };
       localStorage.setItem(STORAGE_KEY, encryptData(indexData, pin));
       localStorage.setItem(HAS_ACCOUNT_KEY, 'true');
@@ -184,53 +184,65 @@ const App: React.FC = () => {
   };
 
   const handleLogin = (pin: string) => {
-    const encryptedData = localStorage.getItem(STORAGE_KEY);
-    if (encryptedData) {
-      const data: any = decryptData(encryptedData, pin);
+    const encryptedIndex = localStorage.getItem(STORAGE_KEY);
+    if (encryptedIndex) {
+      const indexData: any = decryptData(encryptedIndex, pin);
       
-      if (data) {
+      if (indexData) {
         let profiles: Record<string, ProfileData> = {};
         let activeId: string | null = null;
+        const ids: string[] = indexData.profileIds || [];
 
-        // CHECK FORMAT: New Split Storage (Version 2)
-        if (data.version === 2 || data.profileIds) {
-            const ids: string[] = data.profileIds || [];
-            activeId = data.activeProfileId;
+        // LOAD PROFILES
+        ids.forEach(id => {
+            // Strategy: Try loading from new separate tables first. 
+            // If not found, fall back to legacy single-key format and migrate.
+            const userKey = `${USER_KEY_PREFIX}${id}`;
+            const logsKey = `${LOGS_KEY_PREFIX}${id}`;
             
-            // Load each profile from its specific table
-            ids.forEach(id => {
-                const pKey = `${PROFILE_KEY_PREFIX}${id}`;
-                const pEnc = localStorage.getItem(pKey);
-                if (pEnc) {
-                    const pData = decryptData(pEnc, pin);
+            const userEnc = localStorage.getItem(userKey);
+            const logsEnc = localStorage.getItem(logsKey);
+
+            if (userEnc && logsEnc) {
+                // Version 3: Separated Tables
+                const userData = decryptData(userEnc, pin);
+                const logsData = decryptData(logsEnc, pin);
+                if (userData && logsData) {
+                    profiles[id] = {
+                        user: userData.user,
+                        cycle: userData.cycle,
+                        reminders: userData.reminders,
+                        logs: logsData
+                    };
+                }
+            } else {
+                // Fallback / Migration for Version 1 & 2
+                const legacyKey = `${LEGACY_PROFILE_KEY_PREFIX}${id}`;
+                const legacyEnc = localStorage.getItem(legacyKey);
+                if (legacyEnc) {
+                    const pData = decryptData(legacyEnc, pin);
                     if (pData) {
                         profiles[id] = pData;
+                        // MIGRATION: Save in new format immediately
+                        saveProfileDataToStorage(id, pData, pin);
+                        // Optional: Clean up legacy key
+                        localStorage.removeItem(legacyKey);
                     }
                 }
-            });
-            
-            // Fallback if activeId is missing but we have profiles
-            if (!activeId && ids.length > 0) activeId = ids[0];
+            }
+        });
 
-        } else if (data.profiles) {
-             // CHECK FORMAT: Old Unified Storage (Version 1)
-             // Automatically migrate in memory, will be saved in new format on next update
-             profiles = data.profiles;
-             activeId = data.activeProfileId || Object.keys(profiles)[0];
-        } else if (data.user) {
-             // CHECK FORMAT: Ancient Single User
-             const userId = data.user.id || 'primary_user';
-             const pmsData = data.user.pmsData || {
-                stress: 5, sleep: 5, anxiety: 5, depression: 5, height: 165, weight: 65, bmi: 5, diet: 5
-             };
-             const userProfile = { ...data.user, id: userId, relationship: 'Self', pmsData };
-             profiles = {
-                 [userId]: {
-                     user: userProfile,
-                     cycle: data.cycle,
-                     logs: data.logs || {}
-                 }
-             };
+        // Determine Active ID
+        if (indexData.activeProfileId && profiles[indexData.activeProfileId]) {
+            activeId = indexData.activeProfileId;
+        } else if (ids.length > 0 && profiles[ids[0]]) {
+            activeId = ids[0];
+        } else if (indexData.user) {
+             // Ancient version fallback
+             const userId = indexData.user.id || 'primary_user';
+             const pmsData = indexData.user.pmsData || { stress: 5, sleep: 5, anxiety: 5, depression: 5, height: 165, weight: 65, bmi: 5, diet: 5 };
+             const userProfile = { ...indexData.user, id: userId, relationship: 'Self', pmsData };
+             profiles = { [userId]: { user: userProfile, cycle: indexData.cycle, logs: indexData.logs || {} } };
              activeId = userId;
         }
 
@@ -246,9 +258,7 @@ const App: React.FC = () => {
               cycle: activeData.cycle,
               logs: activeData.logs
             }));
-            
             checkLoginNotification();
-
         } else {
              setLoginError(true);
         }
@@ -261,68 +271,40 @@ const App: React.FC = () => {
   };
 
   const handleLogout = () => {
-    setState(s => ({
-      ...s,
-      view: 'PIN',
-      user: null,
-      cycle: null,
-      logs: {},
-      profiles: {},
-      activeProfileId: null
-    }));
+    setState(s => ({ ...s, view: 'PIN', user: null, cycle: null, logs: {}, profiles: {}, activeProfileId: null }));
   };
 
   const handleReset = () => {
-    // Clear Main Index
     localStorage.removeItem(STORAGE_KEY);
     localStorage.removeItem(HAS_ACCOUNT_KEY);
-    
-    // Clear All Profile Keys
     Object.keys(localStorage).forEach(key => {
-        if (key.startsWith(PROFILE_KEY_PREFIX)) {
+        if (key.startsWith(USER_KEY_PREFIX) || key.startsWith(LOGS_KEY_PREFIX) || key.startsWith(LEGACY_PROFILE_KEY_PREFIX)) {
             localStorage.removeItem(key);
         }
     });
-    
-    setState({
-      view: 'LANDING',
-      user: null,
-      cycle: null,
-      logs: {},
-      profiles: {},
-      activeProfileId: null,
-      darkMode: state.darkMode
-    });
+    setState({ view: 'LANDING', user: null, cycle: null, logs: {}, profiles: {}, activeProfileId: null, darkMode: state.darkMode });
   };
 
-  // Called when Onboarding finishes
   const handleCreateProfile = (user: UserProfile, cycle: CycleData, initialLogs: Record<string, DailyLog> = {}) => {
-    // Determine if this is the FIRST profile (Setup) or an ADDITIONAL profile
     const isInitialSetup = Object.keys(state.profiles).length === 0;
-
     let userToSave = { ...user };
     let encryptionPin = user.pin;
 
     if (!isInitialSetup) {
-        // We are adding a profile while logged in.
-        // Rule: All profiles share the same PIN (usually the Mother/Primary User's PIN).
         const profilesList = Object.values(state.profiles) as ProfileData[];
         const primaryUser = profilesList.find(p => p.user.relationship === 'Self')?.user;
         const existingPin = primaryUser?.pin || state.user?.pin;
-
         if (existingPin) {
-            userToSave.pin = existingPin; // Inherit the PIN
-            encryptionPin = existingPin;  // Use existing PIN for storage encryption
-        } else {
-             console.warn("Could not find existing PIN for new profile. Using provided PIN.");
+            userToSave.pin = existingPin;
+            encryptionPin = existingPin;
         }
     }
 
     const newProfileData: ProfileData = { user: userToSave, cycle, logs: initialLogs };
     const newProfiles = { ...state.profiles, [user.id]: newProfileData };
-
-    // Use Helper to Persist with Separate Tables
-    persistState(newProfiles, user.id, encryptionPin);
+    
+    // Save all state
+    persistAllProfiles(newProfiles, user.id, encryptionPin);
 
     setState(s => ({
       ...s,
@@ -338,16 +320,12 @@ const App: React.FC = () => {
   const switchProfile = (profileId: string) => {
       const target = state.profiles[profileId];
       if (target) {
-          // Note: We don't necessarily need to persist the active profile change immediately 
-          // unless we want it to persist across reloads. 
-          // Current persistState saves activeProfileId to the index, so let's save it.
           const pin = state.user?.pin || ''; 
-          
-          // Persist the switch so next reload opens this profile
+          // Update Index only
           const indexData = {
             activeProfileId: profileId,
             profileIds: Object.keys(state.profiles),
-            version: 2
+            version: 3
           };
           localStorage.setItem(STORAGE_KEY, encryptData(indexData, pin));
 
@@ -364,12 +342,6 @@ const App: React.FC = () => {
 
   const handleDeleteProfile = (profileId: string) => {
     const currentProfiles = { ...state.profiles };
-    
-    if (!currentProfiles[profileId]) {
-        console.error("Attempted to delete non-existent profile:", profileId);
-        return;
-    }
-
     const targetUser = currentProfiles[profileId].user;
 
     if (targetUser.relationship === 'Self') {
@@ -377,98 +349,64 @@ const App: React.FC = () => {
         return;
     }
 
-    if (!window.confirm(`Are you sure you want to delete ${targetUser.name}'s profile? This cannot be undone.`)) {
-        return;
-    }
+    if (!window.confirm(`Are you sure you want to delete ${targetUser.name}'s profile?`)) return;
 
     delete currentProfiles[profileId];
-
     let nextActiveId = state.activeProfileId;
     
     if (state.activeProfileId === profileId || !currentProfiles[state.activeProfileId!]) {
         const selfProfile = Object.values(currentProfiles).find(p => p.user.relationship === 'Self');
-        if (selfProfile) {
-            nextActiveId = selfProfile.user.id;
-        } else {
-            const availableIds = Object.keys(currentProfiles);
-            if (availableIds.length > 0) {
-                nextActiveId = availableIds[0];
-            } else {
-                handleReset();
-                return;
-            }
-        }
+        nextActiveId = selfProfile ? selfProfile.user.id : (Object.keys(currentProfiles)[0] || null);
+        if (!nextActiveId) { handleReset(); return; }
     }
 
     const primaryUser = Object.values(currentProfiles).find(p => p.user.relationship === 'Self')?.user;
     const pinToUse = primaryUser?.pin || state.user?.pin || '';
 
-    // Remove old key for deleted profile
-    localStorage.removeItem(`${PROFILE_KEY_PREFIX}${profileId}`);
+    // Remove separate tables
+    localStorage.removeItem(`${USER_KEY_PREFIX}${profileId}`);
+    localStorage.removeItem(`${LOGS_KEY_PREFIX}${profileId}`);
+    // Cleanup legacy if exists
+    localStorage.removeItem(`${LEGACY_PROFILE_KEY_PREFIX}${profileId}`);
 
-    // Persist remaining state
-    persistState(currentProfiles, nextActiveId, pinToUse);
+    persistAllProfiles(currentProfiles, nextActiveId!, pinToUse);
 
     const nextActiveData = currentProfiles[nextActiveId!];
-    
     setState(prev => ({
         ...prev,
         profiles: currentProfiles,
         activeProfileId: nextActiveId,
-        user: nextActiveData ? nextActiveData.user : null,
-        cycle: nextActiveData ? nextActiveData.cycle : null,
-        logs: nextActiveData ? nextActiveData.logs : {}
+        user: nextActiveData.user,
+        cycle: nextActiveData.cycle,
+        logs: nextActiveData.logs
     }));
   };
 
   const saveLog = (log: DailyLog) => {
     if (!state.activeProfileId) return;
-
     checkMoodTrigger(log.mood, log.symptoms);
 
     const currentProfile = state.profiles[state.activeProfileId];
     const newLogs = { ...currentProfile.logs, [log.date]: log };
     const updatedProfile = { ...currentProfile, logs: newLogs };
-    
     const newProfiles = { ...state.profiles, [state.activeProfileId]: updatedProfile };
-    
     const pinToUse = state.user?.pin || '';
 
-    // Optimization: Just update the specific profile key
-    localStorage.setItem(`${PROFILE_KEY_PREFIX}${state.activeProfileId}`, encryptData(updatedProfile, pinToUse));
-    // We update the in-memory state, but we don't strictly need to write the Index every time logs change, 
-    // as IDs haven't changed. But to be safe/consistent with schema v2 migration, we ensure index exists.
-    // If index already exists (which it should if we logged in), we are good.
-    // To cover the edge case of first-log-after-migration not creating index:
-    // We rely on handleLogin/handleCreateProfile to have established the index.
+    // Only update the Logs "Table" for this profile to allow high-frequency updates without rewriting User data
+    localStorage.setItem(`${LOGS_KEY_PREFIX}${state.activeProfileId}`, encryptData(newLogs, pinToUse));
     
-    setState(s => ({
-        ...s,
-        profiles: newProfiles,
-        logs: newLogs
-    }));
+    setState(s => ({ ...s, profiles: newProfiles, logs: newLogs }));
   };
-
-  const handleAddProfileRequest = () => {
-      setState(s => ({ ...s, view: 'ONBOARDING' }));
-  };
-
-  const handleCancelOnboarding = () => {
-      setState(s => ({ ...s, view: 'HOME' }));
-  };
-
-  // --- Data Management ---
 
   const handleExportData = () => {
     const dataToExport = {
         profiles: state.profiles,
         activeProfileId: state.activeProfileId,
-        version: 2
+        version: 3
     };
     const dataStr = JSON.stringify(dataToExport, null, 2);
     const blob = new Blob([dataStr], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
-    
     const a = document.createElement('a');
     a.href = url;
     a.download = `kimi_backup_${format(new Date(), 'yyyy-MM-dd')}.json`;
@@ -482,46 +420,27 @@ const App: React.FC = () => {
     const reader = new FileReader();
     reader.onload = (e) => {
       try {
-        const result = e.target?.result as string;
-        if (!result) return;
-        
+        const result = e.target?.result;
+        if (typeof result !== 'string') return;
         const data: any = JSON.parse(result);
         
         let importedProfiles: Record<string, ProfileData> = {};
         let activeId = '';
 
-        if (data.profiles) {
+        if (data && data.profiles) {
             importedProfiles = data.profiles;
             activeId = data.activeProfileId || '';
-        } else if (data.user && data.cycle) {
+        } else if (data && data.user && data.cycle) {
              const uid = data.user.id || 'imported_user';
-             const pmsData = data.user.pmsData || {
-                stress: 5, sleep: 5, anxiety: 5, depression: 5, height: 165, weight: 65, bmi: 5, diet: 5
-             };
-             const profile: ProfileData = {
-                user: { 
-                    ...data.user, 
-                    id: uid, 
-                    relationship: data.user.relationship || 'Self',
-                    pmsData 
-                },
-                cycle: data.cycle,
-                logs: data.logs || {}
-             };
-             importedProfiles = { [uid]: profile };
+             importedProfiles = { [uid]: { user: { ...data.user, id: uid }, cycle: data.cycle, logs: data.logs || {} } };
              activeId = uid;
         }
 
         if (Object.keys(importedProfiles).length > 0) {
-            const profilesArray = Object.values(importedProfiles) as any[];
-            const primary = profilesArray.find((p: any) => p.user?.relationship === 'Self');
-            const pin = primary?.user?.pin || '0000'; 
-
-            // Use Helper to Persist with Separate Tables
-            persistState(importedProfiles, activeId, pin);
-            
-            const activeData = importedProfiles[activeId] as any;
-            
+            const primary = Object.values(importedProfiles).find((p: ProfileData) => p.user?.relationship === 'Self');
+            // Save using new persistence logic
+            persistAllProfiles(importedProfiles, activeId, primary?.user?.pin || '0000');
+            const activeData = importedProfiles[activeId];
             setState(s => ({
                 ...s,
                 view: 'HOME',
@@ -535,10 +454,9 @@ const App: React.FC = () => {
         } else {
             alert('Invalid file format.');
         }
-
       } catch (err) {
         console.error(err);
-        alert('Failed to import data. File may be corrupted.');
+        alert('Failed to import data.');
       }
     };
     reader.readAsText(file);
@@ -549,31 +467,19 @@ const App: React.FC = () => {
     window.location.reload();
   };
 
-  // --- Notifications Test ---
   const handleTestNotification = () => {
-      // Re-request in case it was dismissed (some browsers allow re-prompt on user action)
       if (Notification.permission !== 'granted') {
           Notification.requestPermission().then(permission => {
               if (permission === 'granted') {
-                  triggerLocalNotification(
-                      "KIMI Test",
-                      "Notifications are working correctly on this device!",
-                      "test-notification"
-                  );
-              } else {
-                  alert("Notifications are disabled in your browser settings. Please enable them to receive alerts.");
+                  triggerLocalNotification("KIMI Test", "Notifications working!", "test");
               }
           });
       } else {
-          triggerLocalNotification(
-              "KIMI Test",
-              "Notifications are working correctly on this device!",
-              "test-notification"
-          );
+          triggerLocalNotification("KIMI Test", "Notifications working!", "test");
       }
   };
 
-  // --- Views ---
+  // --- RENDERERS ---
 
   if (state.view === 'SPLASH') return <SplashScreen onComplete={handleSplashComplete} />;
   if (state.view === 'BOOT') return <div className="min-h-screen bg-[#FFF0F3] dark:bg-gray-900" />;
@@ -585,40 +491,13 @@ const App: React.FC = () => {
     const weekDays = ['S','M','T','W','T','F','S'];
 
     return (
-      <div className="p-4 pt-10 h-full overflow-y-auto bg-[#FFF0F3] dark:bg-gray-900 transition-colors">
+      <div className="p-4 pt-10 h-full overflow-y-auto bg-[#FFF0F3] dark:bg-gray-900 transition-colors pb-32">
         <div className="flex justify-between items-center mb-6">
            <button onClick={() => setCurrentDate(subMonths(currentDate, 1))} className="text-[#E84C7C] font-bold p-2 hover:bg-white/50 dark:hover:bg-gray-800/50 rounded-full">&lt;</button>
            <h2 className="text-xl font-bold text-[#2D2D2D] dark:text-white">{format(currentDate, 'MMMM yyyy')}</h2>
            <button onClick={() => setCurrentDate(addMonths(currentDate, 1))} className="text-[#E84C7C] font-bold p-2 hover:bg-white/50 dark:hover:bg-gray-800/50 rounded-full">&gt;</button>
         </div>
 
-        <div className="flex flex-wrap gap-4 justify-center mb-6 px-2">
-            <div className="flex items-center gap-2 group relative cursor-help">
-                <div className="w-3 h-3 rounded-full bg-[#E84C7C]"></div>
-                <span className="text-xs font-medium text-gray-600 dark:text-gray-300">Period</span>
-                <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2 py-1 bg-gray-800 text-white text-[10px] rounded shadow-lg whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10">
-                   Days of menstruation
-                   <div className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-gray-800"></div>
-                </div>
-            </div>
-            <div className="flex items-center gap-2 group relative cursor-help">
-                <div className="w-3 h-3 rounded-full bg-[#7B86CB]"></div>
-                <span className="text-xs font-medium text-gray-600 dark:text-gray-300">Ovulation</span>
-                <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2 py-1 bg-gray-800 text-white text-[10px] rounded shadow-lg whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10">
-                   Predicted peak fertility
-                   <div className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-gray-800"></div>
-                </div>
-            </div>
-            <div className="flex items-center gap-2 group relative cursor-help">
-                <div className="w-3 h-3 rounded-full bg-pink-100 dark:bg-pink-900/40 border border-pink-200 dark:border-pink-800/50"></div>
-                <span className="text-xs font-medium text-gray-600 dark:text-gray-300">Fertile</span>
-                <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2 py-1 bg-gray-800 text-white text-[10px] rounded shadow-lg whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10">
-                   High chance of conception
-                   <div className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-gray-800"></div>
-                </div>
-            </div>
-        </div>
-        
         <div className="grid grid-cols-7 gap-2 mb-2">
           {weekDays.map(d => <div key={d} className="text-center text-gray-400 dark:text-gray-500 text-sm font-medium">{d}</div>)}
         </div>
@@ -626,13 +505,7 @@ const App: React.FC = () => {
         <div className="grid grid-cols-7 gap-y-4 gap-x-2">
            {days.map(day => {
              let status = state.cycle ? getDayStatus(day, state.cycle, state.user || undefined) : 'none';
-             
-             // Check manual logs for period confirmation
-             const dateKey = format(day, 'yyyy-MM-dd');
-             const log = state.logs[dateKey];
-             if (log?.flow) {
-                 status = 'period_past';
-             }
+             if (state.logs[format(day, 'yyyy-MM-dd')]?.flow) status = 'period_past';
 
              let bg = 'bg-transparent';
              let text = 'text-gray-700 dark:text-gray-300';
@@ -651,58 +524,55 @@ const App: React.FC = () => {
              );
            })}
         </div>
+        
+        {/* Legends */}
+        <div className="flex flex-wrap justify-center gap-4 mt-8 px-4 border-t border-pink-100 dark:border-gray-800 pt-6">
+           <div className="flex items-center gap-2">
+              <div className="w-3 h-3 rounded-full bg-[#E84C7C]"></div>
+              <span className="text-xs font-medium text-gray-500 dark:text-gray-400">Period</span>
+           </div>
+           <div className="flex items-center gap-2">
+              <div className="w-3 h-3 rounded-full bg-[#7B86CB]"></div>
+              <span className="text-xs font-medium text-gray-500 dark:text-gray-400">Ovulation</span>
+           </div>
+           <div className="flex items-center gap-2">
+              <div className="w-3 h-3 rounded-full bg-pink-100 dark:bg-pink-900/40 border border-[#E84C7C]/30"></div>
+              <span className="text-xs font-medium text-gray-500 dark:text-gray-400">Fertile</span>
+           </div>
+        </div>
       </div>
     );
   };
 
   const renderHome = () => {
-    const profilesList = Object.values(state.profiles) as ProfileData[];
-    
     return (
-        <div className="flex flex-col h-full overflow-y-auto no-scrollbar bg-[#FFF0F3] dark:bg-gray-900 transition-colors">
-        {/* Profile Switcher Header */}
+        <div className="flex flex-col h-full overflow-y-auto no-scrollbar bg-[#FFF0F3] dark:bg-gray-900 transition-colors pb-32">
         <header className="p-6 pb-2 pt-12 flex justify-between items-start">
             <div>
-                <h1 className="text-2xl font-bold text-[#2D2D2D] dark:text-white">
-                    Hello, {state.user?.name}
-                </h1>
-                <p className="text-gray-500 dark:text-gray-400 text-sm">
-                    {state.user?.relationship === 'Self' ? 'Tracking for You' : `Tracking for ${state.user?.name}`}
-                </p>
+                <h1 className="text-2xl font-bold text-[#2D2D2D] dark:text-white">Hello, {state.user?.name}</h1>
+                <p className="text-gray-500 dark:text-gray-400 text-sm">{state.user?.relationship === 'Self' ? 'Tracking for You' : `Tracking for ${state.user?.name}`}</p>
             </div>
-            
-            {/* Profile Avatars */}
-            <div className="flex -space-x-3 items-center">
-                {profilesList.map(p => (
-                    <button 
-                        key={p.user.id}
-                        onClick={() => switchProfile(p.user.id)}
-                        className={`w-10 h-10 rounded-full border-2 flex items-center justify-center text-xs font-bold transition-transform hover:scale-110 shadow-sm ${
-                            state.activeProfileId === p.user.id 
-                            ? 'border-[#E84C7C] bg-pink-100 text-[#E84C7C] z-10 scale-110' 
-                            : 'border-white bg-gray-200 text-gray-500 opacity-70'
-                        }`}
-                    >
-                        {p.user.name.charAt(0).toUpperCase()}
+            <div className="flex items-center gap-3">
+                <div className="flex -space-x-3 items-center">
+                    {(Object.values(state.profiles) as ProfileData[]).map(p => (
+                        <button 
+                            key={p.user.id}
+                            onClick={() => switchProfile(p.user.id)}
+                            className={`w-10 h-10 rounded-full border-2 flex items-center justify-center text-xs font-bold transition-transform hover:scale-110 shadow-sm ${state.activeProfileId === p.user.id ? 'border-[#E84C7C] bg-pink-100 text-[#E84C7C] z-10 scale-110' : 'border-white bg-gray-200 text-gray-500 opacity-70'}`}
+                        >
+                            {p.user.name.charAt(0).toUpperCase()}
+                        </button>
+                    ))}
+                    <button onClick={() => setState(s => ({...s, view: 'ONBOARDING'}))} className="w-10 h-10 rounded-full border-2 border-white bg-white dark:bg-gray-800 text-gray-400 flex items-center justify-center shadow-sm hover:text-[#E84C7C]">
+                        <Plus size={16} />
                     </button>
-                ))}
-                
-                {/* Add Profile Button */}
-                <button 
-                    onClick={handleAddProfileRequest}
-                    className="w-10 h-10 rounded-full border-2 border-white bg-white dark:bg-gray-800 text-gray-400 flex items-center justify-center shadow-sm hover:text-[#E84C7C] transition-colors"
-                >
-                    <Plus size={16} />
+                </div>
+                <button onClick={() => setState(s => ({...s, view: 'SETTINGS'}))} className="p-2 bg-white dark:bg-gray-800 rounded-full shadow-sm text-gray-500 dark:text-gray-300 hover:text-[#E84C7C]">
+                    <SettingsIcon size={20} />
                 </button>
             </div>
         </header>
-
         {state.cycle && <BubbleDashboard cycleData={state.cycle} user={state.user} />}
-
-        <div className="px-6 text-center text-gray-400 dark:text-gray-500 text-sm mt-10">
-            <p>Your cycle is being tracked privately.</p>
-            <p>Use the + button to log daily activity.</p>
-        </div>
         </div>
     );
   };
@@ -710,179 +580,93 @@ const App: React.FC = () => {
   const renderInsights = () => {
     const logs = Object.values(state.logs) as DailyLog[];
     const totalDays = logs.length;
-    
-    // 1. Water Stats
-    // Logic: Calculate average from the day the user joined (created profile) until today.
-    // This accounts for days where the user forgot to log (0 intake), distinguishing them from historical pre-app data.
-    
-    let avgWater = 0;
-    
-    if (state.user?.id) {
-        // User ID is timestamp of creation
-        const joinedDate = new Date(parseInt(state.user.id));
-        
-        // Sanity check: if ID isn't a timestamp (legacy), fallback to first log date or just filtering > 0
-        if (!isNaN(joinedDate.getTime())) {
-            const startDate = startOfDay(joinedDate);
-            const today = startOfDay(new Date());
-            
-            // Calculate total days since joining (inclusive of today)
-            const daysSinceJoined = differenceInDays(today, startDate) + 1;
-            const validDaysCount = Math.max(1, daysSinceJoined);
-
-            // Sum water only from logs strictly AFTER or ON the joined date
-            const totalWater = logs.reduce((sum, log) => {
-                const logDate = parseISO(log.date);
-                // We compare timestamps or date objects
-                if (logDate >= startDate) {
-                    return sum + (log.waterIntake || 0);
-                }
-                return sum;
-            }, 0);
-
-            avgWater = Math.round((totalWater / validDaysCount) * 10) / 10;
-        } else {
-             // Fallback for legacy IDs if any: Use old "days with logs" logic or just all logs
-             const waterLogs = logs.filter(l => l.waterIntake > 0);
-             const total = waterLogs.reduce((sum, l) => sum + l.waterIntake, 0);
-             avgWater = waterLogs.length ? Math.round((total / waterLogs.length) * 10) / 10 : 0;
-        }
-    }
-
-    // 2. Symptom Frequency
     const symptomMap: Record<string, number> = {};
-    logs.forEach(log => {
-        log.symptoms.forEach(s => {
-            symptomMap[s] = (symptomMap[s] || 0) + 1;
-        });
-    });
-    const topSymptoms = Object.entries(symptomMap)
-        .sort(([,a], [,b]) => b - a)
-        .slice(0, 4);
-
-    // 3. Mood Frequency
     const moodMap: Record<string, number> = {};
+    let totalWater = 0;
+    let waterLogCount = 0;
+    let totalSleep = 0;
+    let sleepLogCount = 0;
+    let totalExerciseMinutes = 0;
+
     logs.forEach(log => {
-        if (Array.isArray(log.mood)) {
-             log.mood.forEach(m => moodMap[m] = (moodMap[m] || 0) + 1);
+        log.symptoms.forEach(s => symptomMap[s] = (symptomMap[s] || 0) + 1);
+        (log.mood || []).forEach(m => moodMap[m] = (moodMap[m] || 0) + 1);
+        
+        if (log.waterIntake > 0) {
+            totalWater += log.waterIntake;
+            waterLogCount++;
+        }
+        if (log.sleepDuration > 0) {
+            totalSleep += log.sleepDuration;
+            sleepLogCount++;
+        }
+        if (log.didExercise) {
+             totalExerciseMinutes += log.exerciseDuration || 30; // Fallback to 30 if undefined
         }
     });
-    const topMoods = Object.entries(moodMap)
-        .sort(([,a], [,b]) => b - a)
-        .slice(0, 6);
 
-    // 4. Habits
-    let exerciseCount = 0;
-    let medCount = 0;
-    let alcoholCount = 0;
-    let smokeCount = 0;
-
-    logs.forEach(log => {
-        if (log.didExercise) exerciseCount++;
-        if (log.medication) medCount++;
-        if (log.habits?.drank) alcoholCount++;
-        if (log.habits?.smoked) smokeCount++;
-    });
+    const topSymptoms = Object.entries(symptomMap).sort(([,a], [,b]) => b - a).slice(0, 4);
+    const topMoods = Object.entries(moodMap).sort(([,a], [,b]) => b - a).slice(0, 6);
+    
+    const avgWater = waterLogCount > 0 ? Math.round(totalWater / waterLogCount) : 0;
+    const avgSleep = sleepLogCount > 0 ? Math.round(totalSleep / sleepLogCount) : 0;
+    const avgSleepH = Math.floor(avgSleep / 60);
+    const avgSleepM = avgSleep % 60;
+    const totalExerciseHours = Math.floor(totalExerciseMinutes / 60);
+    const totalExerciseMins = totalExerciseMinutes % 60;
 
     return (
         <div className="p-6 h-full overflow-y-auto pb-32 bg-[#FFF0F3] dark:bg-gray-900 transition-colors">
-            <h2 className="text-2xl font-bold text-[#2D2D2D] dark:text-white mb-6">
-                Insights for {state.user?.name}
-            </h2>
+            <h2 className="text-2xl font-bold text-[#2D2D2D] dark:text-white mb-6">Insights for {state.user?.name}</h2>
             
-            {/* Summary Cards */}
+            {/* Vitals Overview */}
             <div className="grid grid-cols-2 gap-4 mb-6">
-                <div className="bg-white dark:bg-gray-800 p-4 rounded-2xl shadow-sm border border-pink-50 dark:border-gray-700">
-                    <div className="flex items-center gap-2 mb-2 text-blue-400">
-                        <Droplet size={18} />
-                        <span className="font-bold text-xs uppercase">Avg Water</span>
-                    </div>
-                    <span className="text-3xl font-bold text-gray-800 dark:text-white">{avgWater}</span>
-                    <span className="text-xs text-gray-400 ml-1">glasses/day</span>
+                <div className="bg-white dark:bg-gray-800 p-4 rounded-2xl shadow-sm border border-pink-50 dark:border-gray-700 flex flex-col items-center justify-center text-center">
+                    <Droplet className="text-blue-400 mb-2" size={24} />
+                    <span className="text-xs text-gray-500 uppercase font-bold tracking-wider mb-1">Avg Hydration</span>
+                    <span className="text-xl font-bold text-gray-800 dark:text-white">{avgWater} ml</span>
                 </div>
-                 <div className="bg-white dark:bg-gray-800 p-4 rounded-2xl shadow-sm border border-pink-50 dark:border-gray-700">
-                    <div className="flex items-center gap-2 mb-2 text-green-500">
-                        <Dumbbell size={18} />
-                        <span className="font-bold text-xs uppercase">Active Days</span>
-                    </div>
-                    <span className="text-3xl font-bold text-gray-800 dark:text-white">{exerciseCount}</span>
-                    <span className="text-xs text-gray-400 ml-1">sessions</span>
+                <div className="bg-white dark:bg-gray-800 p-4 rounded-2xl shadow-sm border border-pink-50 dark:border-gray-700 flex flex-col items-center justify-center text-center">
+                    <Moon className="text-indigo-400 mb-2" size={24} />
+                    <span className="text-xs text-gray-500 uppercase font-bold tracking-wider mb-1">Avg Sleep</span>
+                    <span className="text-xl font-bold text-gray-800 dark:text-white">{avgSleepH}h {avgSleepM}m</span>
+                </div>
+                {/* Exercise Stat */}
+                <div className="bg-white dark:bg-gray-800 p-4 rounded-2xl shadow-sm border border-pink-50 dark:border-gray-700 flex flex-col items-center justify-center text-center col-span-2">
+                    <Dumbbell className="text-orange-400 mb-2" size={24} />
+                    <span className="text-xs text-gray-500 uppercase font-bold tracking-wider mb-1">Total Active Time</span>
+                    <span className="text-xl font-bold text-gray-800 dark:text-white">{totalExerciseHours}h {totalExerciseMins}m</span>
                 </div>
             </div>
 
-            {/* Mood Cloud */}
             <div className="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-sm mb-6 border border-pink-50 dark:border-gray-700">
-                <h3 className="font-semibold text-lg mb-4 dark:text-gray-200 flex items-center gap-2">
-                    <Smile className="text-orange-400" size={20} /> Mood Patterns
-                </h3>
-                {topMoods.length > 0 ? (
-                    <div className="flex flex-wrap gap-2">
-                        {topMoods.map(([mood, count], i) => (
-                            <div key={mood} className={`px-3 py-1.5 rounded-full text-sm font-medium flex items-center gap-2 ${
-                                i === 0 ? 'bg-orange-100 text-orange-600' : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300'
-                            }`}>
-                                <span>{mood}</span>
-                                <span className="bg-white/50 px-1.5 rounded-full text-xs font-bold opacity-70">{count}</span>
-                            </div>
-                        ))}
-                    </div>
-                ) : (
-                     <p className="text-gray-400 text-sm italic">Log moods to see patterns here.</p>
-                )}
-            </div>
-
-             {/* Symptom List */}
-            <div className="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-sm mb-6 border border-pink-50 dark:border-gray-700">
-                <h3 className="font-semibold text-lg mb-4 dark:text-gray-200 flex items-center gap-2">
-                    <Activity className="text-purple-500" size={20} /> Top Symptoms
-                </h3>
-                 {topSymptoms.length > 0 ? (
-                    <div className="space-y-3">
-                        {topSymptoms.map(([sym, count]) => (
-                            <div key={sym} className="flex items-center justify-between">
-                                <span className="text-gray-600 dark:text-gray-300 text-sm font-medium">{sym}</span>
-                                <div className="flex items-center gap-2 flex-1 ml-4 justify-end">
-                                     <div className="w-24 h-2 bg-gray-100 dark:bg-gray-700 rounded-full overflow-hidden">
-                                        <div 
-                                            className="h-full bg-purple-400 rounded-full" 
-                                            style={{ width: `${(count / totalDays) * 100}%` }} 
-                                        />
-                                     </div>
-                                     <span className="text-xs text-gray-400 font-medium w-4 text-right">{count}</span>
-                                </div>
-                            </div>
-                        ))}
-                    </div>
-                 ) : (
-                    <p className="text-gray-400 text-sm italic">Log symptoms to track them here.</p>
-                 )}
-            </div>
-
-            {/* Habits Breakdown */}
-            {(medCount > 0 || alcoholCount > 0 || smokeCount > 0) && (
-                <div className="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-sm mb-6 border border-pink-50 dark:border-gray-700">
-                    <h3 className="font-semibold text-lg mb-4 dark:text-gray-200 flex items-center gap-2">
-                        <Activity className="text-gray-500" size={20} /> Habit Tracker
-                    </h3>
-                    <div className="grid grid-cols-3 gap-2 text-center">
-                        <div className="p-2 bg-purple-50 dark:bg-purple-900/20 rounded-xl">
-                            <Pill size={16} className="mx-auto text-purple-500 mb-1" />
-                            <span className="block text-lg font-bold text-gray-800 dark:text-white">{medCount}</span>
-                            <span className="text-[10px] text-gray-400">Meds</span>
+                <h3 className="font-semibold text-lg mb-4 dark:text-gray-200 flex items-center gap-2"><Smile className="text-orange-400" size={20} /> Mood Patterns</h3>
+                <div className="flex flex-wrap gap-2">
+                    {topMoods.length > 0 ? topMoods.map(([mood, count], i) => (
+                        <div key={mood} className={`px-3 py-1.5 rounded-full text-sm font-medium flex items-center gap-2 ${i === 0 ? 'bg-orange-100 text-orange-600' : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300'}`}>
+                            <span>{mood}</span>
+                            <span className="bg-white/50 px-1.5 rounded-full text-xs font-bold opacity-70">{count}</span>
                         </div>
-                         <div className="p-2 bg-orange-50 dark:bg-orange-900/20 rounded-xl">
-                            <Wine size={16} className="mx-auto text-orange-500 mb-1" />
-                            <span className="block text-lg font-bold text-gray-800 dark:text-white">{alcoholCount}</span>
-                            <span className="text-[10px] text-gray-400">Alcohol</span>
-                        </div>
-                         <div className="p-2 bg-red-50 dark:bg-red-900/20 rounded-xl">
-                            <Cigarette size={16} className="mx-auto text-red-500 mb-1" />
-                            <span className="block text-lg font-bold text-gray-800 dark:text-white">{smokeCount}</span>
-                            <span className="text-[10px] text-gray-400">Smoke</span>
-                        </div>
-                    </div>
+                    )) : <p className="text-gray-400 text-sm italic">No mood data yet.</p>}
                 </div>
-            )}
+            </div>
+
+            <div className="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-sm mb-6 border border-pink-50 dark:border-gray-700">
+                <h3 className="font-semibold text-lg mb-4 dark:text-gray-200 flex items-center gap-2"><Activity className="text-purple-500" size={20} /> Top Symptoms</h3>
+                 <div className="space-y-3">
+                    {topSymptoms.length > 0 ? topSymptoms.map(([sym, count]) => (
+                        <div key={sym} className="flex items-center justify-between">
+                            <span className="text-gray-600 dark:text-gray-300 text-sm font-medium">{sym}</span>
+                            <div className="flex items-center gap-2 flex-1 ml-4 justify-end">
+                                 <div className="w-24 h-2 bg-gray-100 dark:bg-gray-700 rounded-full overflow-hidden">
+                                    <div className="h-full bg-purple-400 rounded-full" style={{ width: `${(count / totalDays) * 100}%` }} />
+                                 </div>
+                                 <span className="text-xs text-gray-400 font-medium w-4 text-right">{count}</span>
+                            </div>
+                        </div>
+                    )) : <p className="text-gray-400 text-sm italic">No symptoms logged.</p>}
+                </div>
+            </div>
         </div>
     );
   };
@@ -890,223 +674,32 @@ const App: React.FC = () => {
   const renderDailyLog = () => {
     const today = format(new Date(), 'yyyy-MM-dd');
     const log = state.logs[today] || { 
-        date: today, 
-        waterIntake: 0, 
-        flow: null, 
-        symptoms: [], 
-        mood: [], 
-        medication: false, 
-        didExercise: false, 
-        habits: { smoked: false, drank: false } 
+        date: today, waterIntake: 0, waterTarget: 2000, sleepDuration: 0, sleepTarget: 480,
+        flow: null, symptoms: [], detailedSymptoms: [], mood: [], medication: false, didExercise: false, habits: { smoked: false, drank: false } 
     };
+    return <DailyLogView log={log} onSave={saveLog} onClose={() => setState(s => ({...s, view: 'HOME'}))} />;
+  };
 
-    const toggleSymptom = (sym: string) => {
-       const exists = log.symptoms.includes(sym);
-       const newSym = exists ? log.symptoms.filter(s => s !== sym) : [...log.symptoms, sym];
-       saveLog({ ...log, symptoms: newSym });
-    };
-
-    const toggleMood = (m: string) => {
-        const exists = log.mood.includes(m);
-        const newMood = exists ? log.mood.filter(mo => mo !== m) : [...log.mood, m];
-        saveLog({ ...log, mood: newMood });
-    };
-
-    const flowOptions: Array<'Spotting' | 'Light' | 'Medium' | 'Heavy'> = ['Spotting', 'Light', 'Medium', 'Heavy'];
-    const moodOptions = ['Happy', 'Anxious', 'Irritable', 'Sad', 'Energetic', 'Calm', 'Tired'];
-    const symptomOptions = ['Cramps', 'Headache', 'Bloating', 'Acne', 'Backache', 'Tender Breasts', 'Nausea'];
-
-    // Determine if user is eligible for intimacy tracking (18+)
-    const isAdult = !state.user?.age || state.user.age >= 18;
-
-    return (
-      <div className="p-6 pb-32 overflow-y-auto h-full bg-[#FFF0F3] dark:bg-gray-900 transition-colors">
-         <div className="flex items-center justify-between mb-6">
-            <div className="flex items-center gap-3">
-                 <button 
-                    onClick={() => setState(s => ({...s, view: 'HOME'}))}
-                    className="p-2 rounded-full hover:bg-black/5 dark:hover:bg-white/10 transition-colors"
-                 >
-                    <ArrowLeft size={20} className="text-[#2D2D2D] dark:text-white" />
-                 </button>
-                 <div>
-                    <h2 className="text-2xl font-bold text-[#2D2D2D] dark:text-white leading-none">Log Today</h2>
-                    <span className="text-gray-400 text-sm font-medium">{format(new Date(), 'MMM d, yyyy')}</span>
-                 </div>
-            </div>
-            
-            <button 
-                onClick={() => setState(s => ({...s, view: 'HOME'}))}
-                className="bg-[#E84C7C] text-white px-4 py-2 rounded-full text-sm font-bold shadow-md shadow-pink-200 dark:shadow-none flex items-center gap-2 hover:bg-[#D63E6D] transition-colors"
-            >
-                <Check size={16} />
-                Done
-            </button>
-         </div>
-
-         {/* Flow Section */}
-         <div className="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-sm mb-6 border border-pink-50 dark:border-gray-700">
-             <h3 className="font-semibold text-lg mb-4 flex items-center gap-2 dark:text-gray-200">
-                 <Droplet size={20} className="text-[#E84C7C]" fill="#E84C7C" /> Flow
-             </h3>
-             <div className="flex justify-between gap-2 overflow-x-auto no-scrollbar">
-                 {flowOptions.map(option => (
-                     <button
-                        key={option}
-                        onClick={() => saveLog({...log, flow: option === log.flow ? null : option})}
-                        className={`flex-1 py-3 px-2 rounded-xl text-sm font-medium transition-all whitespace-nowrap border ${
-                            log.flow === option 
-                            ? 'bg-[#E84C7C] text-white border-[#E84C7C] shadow-md shadow-pink-200' 
-                            : 'bg-white dark:bg-gray-700 text-gray-600 dark:text-gray-300 border-gray-100 dark:border-gray-600'
-                        }`}
-                     >
-                         {option}
-                     </button>
-                 ))}
-             </div>
-         </div>
-
-         {/* Mood Section */}
-         <div className="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-sm mb-6 border border-pink-50 dark:border-gray-700">
-             <h3 className="font-semibold text-lg mb-4 flex items-center gap-2 dark:text-gray-200">
-                 <Smile size={20} className="text-orange-400" /> Mood
-             </h3>
-             <div className="flex flex-wrap gap-2">
-                 {moodOptions.map(option => (
-                     <button
-                        key={option}
-                        onClick={() => toggleMood(option)}
-                        className={`px-4 py-2 rounded-full text-sm font-medium border transition-all ${
-                            log.mood.includes(option)
-                            ? 'bg-orange-100 text-orange-600 border-orange-200 dark:bg-orange-900/40 dark:text-orange-300 dark:border-orange-800'
-                            : 'bg-white dark:bg-gray-700 text-gray-600 dark:text-gray-300 border-gray-100 dark:border-gray-600'
-                        }`}
-                     >
-                         {option}
-                     </button>
-                 ))}
-             </div>
-         </div>
-
-         {/* Symptoms Section */}
-         <div className="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-sm mb-6 border border-pink-50 dark:border-gray-700 transition-colors">
-           <h3 className="font-semibold text-lg mb-4 flex items-center gap-2 dark:text-gray-200">
-               <Activity size={20} className="text-purple-500" /> Symptoms
-           </h3>
-           <div className="flex flex-wrap gap-2">
-             {symptomOptions.map(s => (
-               <button
-                 key={s}
-                 onClick={() => toggleSymptom(s)}
-                 className={`px-4 py-2 rounded-full text-sm font-medium border transition-all ${
-                   log.symptoms.includes(s) 
-                    ? 'bg-purple-100 text-purple-600 border-purple-200 dark:bg-purple-900/40 dark:text-purple-300 dark:border-purple-800' 
-                    : 'bg-white dark:bg-gray-700 text-gray-600 dark:text-gray-300 border-gray-100 dark:border-gray-600'
-                 }`}
-               >
-                 {s}
-               </button>
-             ))}
-           </div>
-         </div>
-
-         {/* Quick Toggles: Meds & Exercise */}
-         <div className="grid grid-cols-2 gap-4 mb-6">
-            <button 
-                onClick={() => saveLog({...log, medication: !log.medication})}
-                className={`p-4 rounded-2xl border flex items-center justify-center gap-2 transition-all shadow-sm ${log.medication ? 'bg-purple-50 border-purple-200 text-purple-600' : 'bg-white dark:bg-gray-800 border-gray-100 dark:border-gray-700 text-gray-400'}`}
-            >
-                <Pill size={20} />
-                <span className="font-bold text-sm">Medication</span>
-            </button>
-            <button 
-                onClick={() => saveLog({...log, didExercise: !log.didExercise})}
-                className={`p-4 rounded-2xl border flex items-center justify-center gap-2 transition-all shadow-sm ${log.didExercise ? 'bg-green-50 border-green-200 text-green-600' : 'bg-white dark:bg-gray-800 border-gray-100 dark:border-gray-700 text-gray-400'}`}
-            >
-                <Dumbbell size={20} />
-                <span className="font-bold text-sm">Exercise</span>
-            </button>
-         </div>
-
-         {/* Intimacy (Shy Mode) - Only if 18+ */}
-         {isAdult && (
-            <div className="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-sm mb-6 border border-pink-50 dark:border-gray-700">
-                <h3 className="font-semibold text-lg mb-4 flex items-center gap-2 dark:text-gray-200">
-                    <Heart size={18} className="text-[#E84C7C]" /> Intimacy
-                </h3>
-                <div className="flex bg-gray-50 dark:bg-gray-700 rounded-xl p-1">
-                    <button 
-                        onClick={() => saveLog({...log, intimacy: 'none'})}
-                        className={`flex-1 py-2 rounded-lg text-sm font-medium transition-all ${(!log.intimacy || log.intimacy === 'none') ? 'bg-white dark:bg-gray-600 shadow-sm text-gray-800 dark:text-white' : 'text-gray-400'}`}
-                    >
-                        None
-                    </button>
-                    <button 
-                        onClick={() => saveLog({...log, intimacy: 'protected'})}
-                        className={`flex-1 py-2 rounded-lg text-sm font-medium transition-all ${log.intimacy === 'protected' ? 'bg-white dark:bg-gray-600 shadow-sm text-[#E84C7C]' : 'text-gray-400'}`}
-                    >
-                        Protected
-                    </button>
-                    <button 
-                        onClick={() => saveLog({...log, intimacy: 'unprotected'})}
-                        className={`flex-1 py-2 rounded-lg text-sm font-medium transition-all ${log.intimacy === 'unprotected' ? 'bg-white dark:bg-gray-600 shadow-sm text-red-400' : 'text-gray-400'}`}
-                    >
-                        Unprotected
-                    </button>
-                </div>
-            </div>
-         )}
-
-         {/* Water */}
-         <div className="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-sm mb-6 border border-pink-50 dark:border-gray-700 transition-colors">
-            <div className="flex items-center justify-between mb-4">
-               <h3 className="font-semibold text-lg flex items-center gap-2 dark:text-gray-200">
-                 <Droplet className="text-blue-400" /> Water Intake
-               </h3>
-               <span className="text-2xl font-bold text-blue-400">{log.waterIntake}/8</span>
-            </div>
-            <div className="flex gap-1 justify-between">
-              {[1,2,3,4,5,6,7,8].map(n => (
-                <button 
-                  key={n}
-                  onClick={() => saveLog({ ...log, waterIntake: n === log.waterIntake ? n - 1 : n })}
-                  className={`h-8 flex-1 rounded-md transition-all ${n <= log.waterIntake ? 'bg-blue-400' : 'bg-blue-100 dark:bg-gray-700'}`}
-                />
-              ))}
-            </div>
-         </div>
-      </div>
-    );
+  const renderMine = () => {
+      const today = format(new Date(), 'yyyy-MM-dd');
+      const log = state.logs[today] || { 
+          date: today, waterIntake: 0, waterTarget: 2000, sleepDuration: 0, sleepTarget: 480,
+          flow: null, symptoms: [], detailedSymptoms: [], mood: [], medication: false, didExercise: false, habits: { smoked: false, drank: false } 
+      };
+      return <MinePage log={log} onSaveLog={saveLog} user={state.user} />;
   };
 
   return (
-    <div className={`max-w-md mx-auto bg-[#FFF0F3] dark:bg-gray-900 min-h-screen relative shadow-2xl overflow-hidden flex flex-col transition-colors duration-300`}>
-      
-      {/* View Content */}
+    <div className={`max-w-md mx-auto bg-[#FFF0F3] dark:bg-gray-900 h-[100dvh] relative shadow-2xl overflow-hidden flex flex-col transition-colors duration-300`}>
       <main className="flex-1 overflow-hidden relative">
         {state.view === 'HOME' && renderHome()}
         {state.view === 'CALENDAR' && renderCalendar()}
         {state.view === 'DAILY_LOG' && renderDailyLog()}
         {state.view === 'INSIGHTS' && renderInsights()}
-        {state.view === 'LANDING' && (
-           <LandingPage onStartTracking={() => setState(s => ({...s, view: 'ONBOARDING'}))} />
-        )}
-        {state.view === 'ONBOARDING' && (
-            <Onboarding 
-                onComplete={handleCreateProfile} 
-                isAddingProfile={Object.keys(state.profiles).length > 0} 
-                onCancel={handleCancelOnboarding}
-            />
-        )}
-        {state.view === 'PIN' && (
-          <PinLock 
-            onSuccess={handleLogin} 
-            expectedPin={state.user?.pin} 
-            onReset={handleReset} 
-            loginError={loginError}
-            onClearLoginError={() => setLoginError(false)}
-          />
-        )}
+        {state.view === 'MINE' && renderMine()}
+        {state.view === 'LANDING' && <LandingPage onStartTracking={() => setState(s => ({...s, view: 'ONBOARDING'}))} />}
+        {state.view === 'ONBOARDING' && <Onboarding onComplete={handleCreateProfile} isAddingProfile={Object.keys(state.profiles).length > 0} onCancel={() => setState(s => ({...s, view: 'HOME'}))} />}
+        {state.view === 'PIN' && <PinLock onSuccess={handleLogin} expectedPin={state.user?.pin} onReset={handleReset} loginError={loginError} onClearLoginError={() => setLoginError(false)} />}
         {state.view === 'SETTINGS' && (
             <Settings 
                 profiles={(Object.values(state.profiles) as ProfileData[]).map(p => p.user)}
@@ -1117,90 +710,48 @@ const App: React.FC = () => {
                 isDarkMode={state.darkMode}
                 onToggleDarkMode={toggleDarkMode}
                 onLogout={handleLogout}
-                onAddProfile={handleAddProfileRequest}
+                onAddProfile={() => setState(s => ({ ...s, view: 'ONBOARDING' }))}
                 onTestNotification={handleTestNotification}
+                onClose={() => setState(s => ({...s, view: 'HOME'}))}
             />
         )}
       </main>
 
-      {/* Custom Delete Confirmation Modal */}
       {showDeleteModal && (
         <div className="absolute inset-0 z-[60] flex items-center justify-center bg-black/50 p-6 backdrop-blur-sm animate-in fade-in duration-200">
           <div className="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-xl w-full max-w-sm border border-red-100 dark:border-red-900/30">
-             <div className="w-12 h-12 rounded-full bg-red-100 dark:bg-red-900/30 flex items-center justify-center mx-auto mb-4 text-red-500">
-                <Activity size={24} className="rotate-45" />
-             </div>
+             <div className="w-12 h-12 rounded-full bg-red-100 dark:bg-red-900/30 flex items-center justify-center mx-auto mb-4 text-red-500"><Activity size={24} className="rotate-45" /></div>
              <h3 className="text-xl font-bold text-center text-gray-800 dark:text-white mb-2">Delete All Data?</h3>
-             <p className="text-center text-gray-500 dark:text-gray-400 mb-6 text-sm">
-                 This action cannot be undone. Please export your data first so you can restore it later.
-             </p>
+             <p className="text-center text-gray-500 dark:text-gray-400 mb-6 text-sm">This action cannot be undone.</p>
              <div className="flex flex-col gap-3">
-                 <button onClick={handleExportData} className="w-full py-3 border-2 border-[#E84C7C] text-[#E84C7C] rounded-xl font-bold hover:bg-pink-50 dark:hover:bg-pink-900/20 transition-colors">
-                    Export Backup
-                 </button>
-                 <button onClick={confirmDelete} className="w-full py-3 bg-red-500 hover:bg-red-600 text-white rounded-xl font-bold shadow-md shadow-red-200 dark:shadow-none transition-colors">
-                    Yes, Delete Everything
-                 </button>
-                 <button onClick={() => setShowDeleteModal(false)} className="w-full py-3 text-gray-500 dark:text-gray-400 font-medium hover:text-gray-700 dark:hover:text-gray-200">
-                    Cancel
-                 </button>
+                 <button onClick={handleExportData} className="w-full py-3 border-2 border-[#E84C7C] text-[#E84C7C] rounded-xl font-bold hover:bg-pink-50">Export Backup</button>
+                 <button onClick={confirmDelete} className="w-full py-3 bg-red-500 hover:bg-red-600 text-white rounded-xl font-bold">Yes, Delete</button>
+                 <button onClick={() => setShowDeleteModal(false)} className="w-full py-3 text-gray-500 font-medium">Cancel</button>
              </div>
           </div>
         </div>
       )}
 
-      {/* Bottom Nav */}
-      {(state.view !== 'LANDING' && state.view !== 'ONBOARDING' && state.view !== 'PIN' && state.view !== 'SPLASH') && (
+      {(state.view !== 'LANDING' && state.view !== 'ONBOARDING' && state.view !== 'PIN') && (
         <>
           <nav className="absolute bottom-0 left-0 w-full bg-white dark:bg-gray-800 border-t border-pink-100 dark:border-gray-700 flex justify-between px-2 py-3 pb-[calc(1.5rem+env(safe-area-inset-bottom))] z-50 rounded-t-3xl shadow-[0_-5px_20px_rgba(232,76,124,0.1)] transition-colors">
-            <button 
-              onClick={() => setState(s => ({...s, view: 'HOME'}))}
-              className={`flex-1 flex flex-col items-center gap-1 transition-colors ${state.view === 'HOME' ? 'text-[#E84C7C]' : 'text-gray-400 dark:text-gray-500'}`}
-            >
-              <Home size={22} />
-              <span className="text-[10px] font-medium">Home</span>
-            </button>
-            <button 
-              onClick={() => setState(s => ({...s, view: 'CALENDAR'}))}
-              className={`flex-1 flex flex-col items-center gap-1 transition-colors ${state.view === 'CALENDAR' ? 'text-[#E84C7C]' : 'text-gray-400 dark:text-gray-500'}`}
-            >
-              <Calendar size={22} />
-              <span className="text-[10px] font-medium">Calendar</span>
-            </button>
-            
-            {/* Spacer for FAB */}
-            <div className="w-16" /> 
-
-            <button 
-              onClick={() => setState(s => ({...s, view: 'INSIGHTS'}))}
-              className={`flex-1 flex flex-col items-center gap-1 transition-colors ${state.view === 'INSIGHTS' ? 'text-[#E84C7C]' : 'text-gray-400 dark:text-gray-500'}`}
-            >
-              <BarChart2 size={22} />
-              <span className="text-[10px] font-medium">Insights</span>
-            </button>
-            <button 
-              onClick={() => setState(s => ({...s, view: 'SETTINGS'}))}
-              className={`flex-1 flex flex-col items-center gap-1 transition-colors ${state.view === 'SETTINGS' ? 'text-[#E84C7C]' : 'text-gray-400 dark:text-gray-500'}`}
-            >
-              <SettingsIcon size={22} />
-              <span className="text-[10px] font-medium">Settings</span>
-            </button>
+            {[{view: 'HOME', icon: Home, label: 'Home'}, {view: 'CALENDAR', icon: Calendar, label: 'Calendar'}, {view: 'INSIGHTS', icon: BarChart2, label: 'Insights'}, {view: 'MINE', icon: User, label: 'Mine'}].map(item => (
+                <React.Fragment key={item.view}>
+                    {item.view === 'INSIGHTS' && <div className="w-16" />}
+                    <button onClick={() => setState(s => ({...s, view: item.view as any}))} className={`flex-1 flex flex-col items-center gap-1 ${state.view === item.view ? 'text-[#E84C7C]' : 'text-gray-400 dark:text-gray-500'}`}>
+                        <item.icon size={22} />
+                        <span className="text-[10px] font-medium">{item.label}</span>
+                    </button>
+                </React.Fragment>
+            ))}
           </nav>
-
-          {/* FAB */}
           <div className="absolute bottom-[calc(2rem+env(safe-area-inset-bottom))] left-1/2 -translate-x-1/2 z-50">
-            <button 
-              onClick={() => setState(s => ({...s, view: 'DAILY_LOG'}))}
-              className={`w-14 h-14 rounded-full shadow-lg flex items-center justify-center text-white active:scale-95 transition-transform border-4 border-[#FFF0F3] dark:border-gray-900 ${state.view === 'DAILY_LOG' ? 'bg-[#2D2D2D] dark:bg-gray-600' : 'bg-[#E84C7C] shadow-pink-300 dark:shadow-none'}`}
-            >
+            <button onClick={() => setState(s => ({...s, view: 'DAILY_LOG'}))} className={`w-14 h-14 rounded-full shadow-lg flex items-center justify-center text-white active:scale-95 transition-transform border-4 border-[#FFF0F3] dark:border-gray-900 ${state.view === 'DAILY_LOG' ? 'bg-[#2D2D2D] dark:bg-gray-600' : 'bg-[#E84C7C] shadow-pink-300 dark:shadow-none'}`}>
               <PlusCircle size={28} />
             </button>
           </div>
         </>
       )}
-
     </div>
   );
 };
-
-export default App;

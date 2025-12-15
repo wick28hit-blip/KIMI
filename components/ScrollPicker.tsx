@@ -8,6 +8,10 @@ interface ScrollPickerProps<T> {
   height?: number;
   itemHeight?: number;
   className?: string;
+  // Custom Style Props
+  highlightClass?: string;
+  selectedItemClass?: string;
+  itemClass?: string;
 }
 
 const ScrollPicker = <T,>({
@@ -17,7 +21,11 @@ const ScrollPicker = <T,>({
   formatLabel = (i) => String(i),
   height = 200,
   itemHeight = 50,
-  className = ''
+  className = '',
+  // Default to the original Pink styling if not provided
+  highlightClass = 'border-t border-b border-[#E84C7C]/20 bg-white/20 backdrop-blur-sm',
+  selectedItemClass = 'text-[#E84C7C] font-bold text-xl scale-110 opacity-100',
+  itemClass = 'text-gray-400 text-lg scale-95 opacity-40 blur-[0.5px]'
 }: ScrollPickerProps<T>) => {
   const scrollRef = useRef<HTMLDivElement>(null);
   const isScrolling = useRef(false);
@@ -64,9 +72,9 @@ const ScrollPicker = <T,>({
         WebkitMaskImage: 'linear-gradient(to bottom, transparent, black 20%, black 80%, transparent)'
       }}
     >
-      {/* Selection Highlight (Glass Effect) */}
+      {/* Selection Highlight */}
       <div 
-        className="absolute w-full border-t border-b border-[#E84C7C]/20 bg-white/20 backdrop-blur-sm pointer-events-none z-0"
+        className={`absolute w-full pointer-events-none z-0 ${highlightClass}`}
         style={{ 
           top: (height - itemHeight) / 2, 
           height: itemHeight 
@@ -91,8 +99,8 @@ const ScrollPicker = <T,>({
               key={index}
               className={`flex items-center justify-center transition-all duration-300 wheel-item ${
                 isSelected 
-                  ? 'text-[#E84C7C] font-bold text-xl scale-110 opacity-100' 
-                  : 'text-gray-400 text-lg scale-95 opacity-40 blur-[0.5px]'
+                  ? selectedItemClass
+                  : itemClass
               }`}
               style={{ 
                 height: itemHeight,

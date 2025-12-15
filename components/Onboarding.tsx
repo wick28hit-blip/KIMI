@@ -32,7 +32,7 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete, isAddingProfile = f
   
   // PMS Prediction Data (New)
   const [stress, setStress] = useState(5);
-  const [sleep, setSleep] = useState(5); // 0-10, will label as "Sleep Issues" to match formula logic
+  const [sleep, setSleep] = useState(5); 
   const [anxiety, setAnxiety] = useState(5);
   const [depression, setDepression] = useState(5);
   
@@ -48,16 +48,22 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete, isAddingProfile = f
   const next = () => setStep(s => s + 1);
   const back = () => setStep(s => Math.max(0, s - 1));
 
-  // Helpers for ScrollPicker Data
-  const days = Array.from({ length: 31 }, (_, i) => i + 1);
-  const months = [
+  // --- Date Logic Helpers ---
+  const today = startOfDay(new Date());
+  const prevMonth = subMonths(today, 1);
+  
+  // Constrain Step 2 to Current and Previous Month
+  const validMonthsData = [
+    { name: format(prevMonth, 'MMMM'), year: prevMonth.getFullYear(), monthIndex: prevMonth.getMonth() },
+    { name: format(today, 'MMMM'), year: today.getFullYear(), monthIndex: today.getMonth() }
+  ];
+  const validMonthNames = validMonthsData.map(v => v.name);
+
+  // All months for standard pickers (Step 8)
+  const allMonths = [
     'January', 'February', 'March', 'April', 'May', 'June', 
     'July', 'August', 'September', 'October', 'November', 'December'
   ];
-  
-  const currentYear = new Date().getFullYear();
-  // Provide previous, current, and next year to prevent accidental edge selection
-  const years = [currentYear - 1, currentYear, currentYear + 1];
 
   const cycleRange = Array.from({ length: 25 }, (_, i) => 21 + i); 
   const durationRange = Array.from({ length: 9 }, (_, i) => 2 + i); 
@@ -66,43 +72,42 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete, isAddingProfile = f
   const heightRange = Array.from({ length: 100 }, (_, i) => 120 + i); // 120cm - 220cm
   const weightRange = Array.from({ length: 120 }, (_, i) => 30 + i); // 30kg - 150kg
 
-  // Date Picker Logic
-  const handleDayChange = (day: number) => {
+  // Step 2 Handlers
+  const handleRestrictedDayChange = (day: number) => {
     const daysInMonth = getDaysInMonth(pickerDate);
     const validDay = Math.min(day, daysInMonth);
-    // Ensure we keep it at start of day
     setPickerDate(d => startOfDay(setDate(d, validDay)));
   };
-  const handleMonthChange = (monthName: string) => {
-    const monthIndex = months.indexOf(monthName);
-    setPickerDate(d => startOfDay(setMonth(d, monthIndex)));
-  };
-  const handleYearChange = (year: number) => {
-    setPickerDate(d => startOfDay(setYear(d, year)));
+
+  const handleRestrictedMonthChange = (monthName: string) => {
+    const target = validMonthsData.find(m => m.name === monthName);
+    if (target) {
+        setPickerDate(prev => {
+            let newDate = setYear(setMonth(prev, target.monthIndex), target.year);
+            const maxDays = getDaysInMonth(newDate);
+            if (newDate.getDate() > maxDays) {
+                newDate = setDate(newDate, maxDays);
+            }
+            return startOfDay(newDate);
+        });
+    }
   };
 
-  // Temp Date Picker Logic for Editing History
+  // Temp Date Picker Logic for Editing History (Step 8)
   const handleTempDayChange = (day: number) => {
       const daysInMonth = getDaysInMonth(tempEditDate);
       const validDay = Math.min(day, daysInMonth);
       setTempEditDate(d => startOfDay(setDate(d, validDay)));
   };
   const handleTempMonthChange = (monthName: string) => {
-      const monthIndex = months.indexOf(monthName);
+      const monthIndex = allMonths.indexOf(monthName);
       setTempEditDate(d => startOfDay(setMonth(d, monthIndex)));
-  };
-  const handleTempYearChange = (year: number) => {
-      setTempEditDate(d => startOfDay(setYear(d, year)));
   };
 
   // Initialize History Dates when entering Step 8
   useEffect(() => {
     if (step === 8) {
-        // ALGORITHM UPDATE: 
-        // Use (CycleLength - 1) as the interval based on user preference that the Nth day is the START of the next period.
         const effectiveInterval = cycleLength - 1;
-        
-        // We project backwards: Last Period - Interval, and - 2*Interval
         const h1 = subDays(pickerDate, effectiveInterval);
         const h2 = subDays(pickerDate, effectiveInterval * 2);
         setHistoryDates([h1, h2]);
@@ -127,7 +132,7 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete, isAddingProfile = f
       relationship,
       age, 
       pin: pin || '',
-      notificationsEnabled: true, // Default to true on new profile creation
+      notificationsEnabled: true,
       pmsData: {
         stress,
         sleep,
@@ -136,7 +141,7 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete, isAddingProfile = f
         height,
         weight,
         bmi,
-        diet: 5 // Default middle value as not explicitly asked in UI
+        diet: 5
       }
     };
     const cycle: CycleData = {
@@ -145,27 +150,27 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete, isAddingProfile = f
       periodDuration
     };
 
-    // Generate Initial Logs for History
     const initialLogs: Record<string, DailyLog> = {};
     
-    // Helper to add a period log
     const addPeriodLog = (startDate: Date) => {
         const dateStr = format(startDate, 'yyyy-MM-dd');
         initialLogs[dateStr] = {
             date: dateStr,
             waterIntake: 0,
-            flow: 'Medium', // Assume medium flow for historical records
+            waterTarget: 2000,
+            sleepDuration: 0,
+            sleepTarget: 480,
+            flow: 'Medium',
             mood: [],
             symptoms: [],
+            detailedSymptoms: [],
             medication: false,
             didExercise: false,
             habits: { smoked: false, drank: false }
         };
     };
 
-    // Add confirmed last period
     addPeriodLog(pickerDate);
-    // Add verified history dates
     historyDates.forEach(d => addPeriodLog(d));
 
     onComplete(user, cycle, initialLogs);
@@ -175,7 +180,7 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete, isAddingProfile = f
     switch (step) {
       case 0: // Relationship Selection
         return (
-           <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
+           <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 h-full flex flex-col justify-center">
             <h1 className="text-3xl font-bold text-[#E84C7C] mb-2">{isAddingProfile ? 'New Profile' : 'Welcome to KIMI'}</h1>
             <p className="text-gray-500 mb-8">Who are you tracking for?</p>
             
@@ -215,7 +220,7 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete, isAddingProfile = f
 
       case 1: // Name & Age
         return (
-          <div className="animate-in fade-in slide-in-from-right-8 duration-300">
+          <div className="animate-in fade-in slide-in-from-right-8 duration-300 h-full flex flex-col justify-center">
             <h2 className="text-2xl font-bold text-[#2D2D2D] mb-2">Profile Details</h2>
             <p className="text-gray-500 mb-8">Let's get to know {relationship === 'Self' ? 'you' : 'them'} better.</p>
             <div className="bg-white p-4 rounded-xl shadow-sm border border-pink-100 flex items-center gap-3 mb-4">
@@ -249,6 +254,9 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete, isAddingProfile = f
         );
 
       case 2: // Cycle Data
+        // Dynamic Days for Restricted Picker
+        const currentPickerDays = Array.from({ length: getDaysInMonth(pickerDate) }, (_, i) => i + 1);
+
         return (
           <div className="flex flex-col h-full max-h-[80vh] animate-in fade-in slide-in-from-right-8 duration-300">
             <h2 className="text-2xl font-bold text-[#2D2D2D] mb-4 shrink-0">Cycle Details</h2>
@@ -257,28 +265,21 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete, isAddingProfile = f
               <label className="block text-sm font-medium text-gray-500 mb-2">Last Period Start Date</label>
               <div className="flex gap-2 mb-4">
                 <ScrollPicker 
-                  items={days} 
+                  items={currentPickerDays} 
                   value={pickerDate.getDate()} 
-                  onChange={handleDayChange}
+                  onChange={handleRestrictedDayChange}
                   className="flex-1"
                   height={120}
                 />
                 <ScrollPicker 
-                  items={months} 
-                  value={months[pickerDate.getMonth()]} 
-                  onChange={handleMonthChange}
-                  formatLabel={(m) => m.substring(0, 3)}
-                  className="flex-1"
-                  height={120}
-                />
-                <ScrollPicker 
-                  items={years} 
-                  value={pickerDate.getFullYear()} 
-                  onChange={handleYearChange}
-                  className="flex-1"
+                  items={validMonthNames} 
+                  value={format(pickerDate, 'MMMM')} 
+                  onChange={handleRestrictedMonthChange}
+                  className="flex-[1.5]"
                   height={120}
                 />
               </div>
+              <p className="text-xs text-gray-400 text-center mb-6">Select from current or previous month only</p>
 
               <label className="block text-sm font-medium text-gray-500 mb-2">Average Cycle Length (Days)</label>
               <div className="mb-4">
@@ -311,8 +312,6 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete, isAddingProfile = f
           </div>
         );
       
-      // NEW HEALTH METRICS STEPS using Circular Slider
-
       case 3: // Stress
         return (
           <div className="animate-in fade-in zoom-in duration-300 flex flex-col items-center justify-center h-full">
@@ -420,7 +419,10 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete, isAddingProfile = f
            </div>
         );
         
-      case 8: // History Check (Last Step before PIN)
+      case 8: // History Check (Last Step before PIN or Finish)
+        // Days for Step 8 Editor (Dynamic)
+        const editDays = Array.from({ length: getDaysInMonth(tempEditDate) }, (_, i) => i + 1);
+
         return (
             <div className="animate-in fade-in slide-in-from-right-8 duration-300 relative h-full flex flex-col">
                 <h2 className="text-2xl font-bold text-[#2D2D2D] mb-2">Verify History</h2>
@@ -463,103 +465,94 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete, isAddingProfile = f
                     </button>
                 </div>
                 
-                {/* Date Editor Modal */}
+                {/* Date Editor Modal - Unrestricted for corrections */}
                 {editingIndex !== null && (
-                    <div className="absolute inset-0 z-50 bg-[#FFF0F3] flex flex-col animate-in slide-in-from-bottom-10 rounded-xl">
-                        <div className="p-6 flex-1 flex flex-col">
-                            <h3 className="text-xl font-bold text-[#2D2D2D] mb-6">Edit Period Date</h3>
-                             
-                             <div className="flex-1 flex flex-col justify-center">
-                                 <div className="flex gap-2 mb-4">
-                                    <ScrollPicker 
-                                    items={days} 
+                    <div className="absolute inset-0 z-50 bg-[#FFF0F3]/90 backdrop-blur-sm flex items-center justify-center p-4">
+                        <div className="bg-white p-6 rounded-2xl shadow-xl w-full max-w-sm">
+                            <h3 className="text-lg font-bold text-gray-800 mb-4">Edit Date</h3>
+                            <div className="flex gap-2 mb-6 h-32">
+                                <ScrollPicker 
+                                    items={editDays} 
                                     value={tempEditDate.getDate()} 
                                     onChange={handleTempDayChange}
                                     className="flex-1"
-                                    height={150}
-                                    />
-                                    <ScrollPicker 
-                                    items={months} 
-                                    value={months[tempEditDate.getMonth()]} 
+                                    height={128}
+                                />
+                                <ScrollPicker 
+                                    items={allMonths} 
+                                    value={allMonths[tempEditDate.getMonth()]} 
                                     onChange={handleTempMonthChange}
                                     formatLabel={(m) => m.substring(0, 3)}
                                     className="flex-1"
-                                    height={150}
-                                    />
-                                    <ScrollPicker 
-                                    items={years} 
-                                    value={tempEditDate.getFullYear()} 
-                                    onChange={handleTempYearChange}
-                                    className="flex-1"
-                                    height={150}
-                                    />
-                                </div>
-                             </div>
-
-                             <div className="flex gap-4">
-                                <button onClick={() => setEditingIndex(null)} className="flex-1 bg-white text-gray-500 py-4 rounded-xl font-bold shadow-sm">
+                                    height={128}
+                                />
+                            </div>
+                            <div className="flex gap-4">
+                                <button 
+                                    onClick={() => setEditingIndex(null)}
+                                    className="flex-1 py-3 text-gray-500 font-bold"
+                                >
                                     Cancel
                                 </button>
-                                <button onClick={saveHistoryEdit} className="flex-1 bg-[#E84C7C] text-white py-4 rounded-xl font-bold shadow-lg shadow-pink-200">
-                                    Save Date
+                                <button 
+                                    onClick={saveHistoryEdit}
+                                    className="flex-1 py-3 bg-[#E84C7C] text-white rounded-xl font-bold shadow-md"
+                                >
+                                    Save
                                 </button>
-                             </div>
+                            </div>
                         </div>
                     </div>
                 )}
             </div>
         );
 
-      case 9: // PIN Setup (Only for initial setup)
+      case 9: // Setup PIN (Only if not adding profile to existing account)
+        if (isAddingProfile) return null; // Should have finished in step 8
         return (
-          <PinLock 
-            isSetup 
-            onSuccess={(pin) => finishOnboarding(pin)} 
-          />
+            <PinLock 
+                isSetup 
+                onSuccess={(pin) => finishOnboarding(pin)} 
+            />
         );
+
+      default:
+        return null;
     }
   };
 
-  const isPinStep = step === 9;
-
   return (
-    <div className={`h-screen bg-[#FFF0F3] flex flex-col items-center relative transition-all overflow-hidden ${isPinStep ? 'p-0' : 'p-6'}`}>
-      
-      {/* Cancel Button for Adding Profile */}
-      {isAddingProfile && !isPinStep && (
-          <button 
-            onClick={onCancel}
-            className="absolute top-6 right-6 w-10 h-10 flex items-center justify-center rounded-full bg-white/50 text-gray-500 hover:bg-red-50 hover:text-red-500 shadow-sm transition-all z-20"
-          >
-            <X size={20} />
-          </button>
-      )}
-
-      {/* Back Button */}
-      {step > 0 && !isPinStep && !editingIndex && (
-        <button 
-          onClick={back}
-          className="absolute top-6 left-6 w-10 h-10 flex items-center justify-center rounded-full bg-white/50 text-[#E84C7C] hover:bg-white shadow-sm transition-all z-20"
-        >
-          <ChevronLeft size={24} />
+    <div className="h-full flex flex-col bg-[#FFF0F3] p-6 relative overflow-hidden">
+      {step > 0 && step < 9 && (
+        <button onClick={back} className="absolute top-6 left-6 p-2 rounded-full hover:bg-white/50 transition-colors z-10">
+          <ChevronLeft className="text-[#2D2D2D]" />
         </button>
       )}
 
-      {/* Progress Bar (hidden on PIN step or editing) */}
-      {!isPinStep && !editingIndex && (
-        <div className="w-full max-w-md mt-12 mb-4 px-2 shrink-0">
-           <div className="flex gap-2">
-            {[0,1,2,3,4,5,6,7,8].map(i => (
-              <div key={i} className={`h-1 flex-1 rounded-full transition-colors duration-500 ${i <= step ? 'bg-[#E84C7C]' : 'bg-pink-200'}`} />
-            ))}
-          </div>
-        </div>
+      {isAddingProfile && onCancel && (
+          <button 
+            onClick={onCancel} 
+            className="absolute top-6 right-6 p-2 rounded-full hover:bg-white/50 transition-colors z-10 text-gray-500"
+          >
+            <X size={24} />
+          </button>
       )}
-
-      {/* Main Content Area */}
-      <div className="w-full max-w-md flex-1 flex flex-col justify-center min-h-0">
+      
+      <div className="flex-1 mt-12 overflow-hidden relative">
         {renderStep()}
       </div>
+      
+      {/* Progress Dots */}
+      {step > 0 && step < 9 && (
+        <div className="flex justify-center gap-2 mt-4 pb-4">
+          {[1, 2, 3, 4, 5, 6, 7, 8].map((s) => (
+            <div 
+              key={s} 
+              className={`h-2 rounded-full transition-all duration-300 ${s <= step ? 'w-4 bg-[#E84C7C]' : 'w-2 bg-gray-200'}`} 
+            />
+          ))}
+        </div>
+      )}
     </div>
   );
 };
