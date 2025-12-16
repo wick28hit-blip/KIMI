@@ -1,6 +1,7 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 import App from './App';
+import './index.css';
 // Styles are handled via CDN Tailwind and inline CSS in index.html/components
 
 const rootElement = document.getElementById('root');
