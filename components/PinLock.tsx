@@ -52,7 +52,6 @@ const PinLock: React.FC<PinLockProps> = ({
       if (isSetup) {
         onSuccess(pin);
       } else {
-        // If we have an expected PIN (resume session), validate locally
         if (expectedPin) {
           if (pin === expectedPin) {
             onSuccess(pin);
@@ -61,7 +60,6 @@ const PinLock: React.FC<PinLockProps> = ({
             setTimeout(() => setPin(''), 500);
           }
         } else {
-          // If no expected PIN (login from cold start), delegate to parent to decrypt/validate
           onSuccess(pin);
         }
       }
@@ -70,24 +68,24 @@ const PinLock: React.FC<PinLockProps> = ({
 
   if (showResetConfirm) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-screen bg-[#FFF0F3] dark:bg-gray-900 p-6 text-center">
-        <div className="p-4 bg-red-100 rounded-full mb-4">
-          <RefreshCw className="text-red-500 w-8 h-8" />
+      <div className="flex flex-col items-center justify-center min-h-screen p-6 text-center">
+        <div className="p-4 neu-pressed rounded-full mb-6 text-red-500">
+          <RefreshCw className="w-8 h-8" />
         </div>
         <h2 className="text-xl font-bold text-gray-800 dark:text-white mb-2">Reset Application?</h2>
         <p className="text-gray-500 dark:text-gray-400 mb-8 max-w-xs">
           This will permanently delete all your data and settings. You will need to complete onboarding again.
         </p>
-        <div className="flex flex-col gap-3 w-full max-w-xs">
+        <div className="flex flex-col gap-4 w-full max-w-xs">
           <button 
             onClick={onReset}
-            className="w-full py-3 bg-red-500 text-white rounded-xl font-bold shadow-md"
+            className="neu-btn w-full py-4 text-red-500 border-red-200"
           >
             Yes, Reset Everything
           </button>
           <button 
             onClick={() => setShowResetConfirm(false)}
-            className="w-full py-3 text-gray-500 font-medium"
+            className="neu-flat w-full py-4 text-gray-500 font-medium"
           >
             Cancel
           </button>
@@ -99,8 +97,8 @@ const PinLock: React.FC<PinLockProps> = ({
   const isError = internalError || loginError;
 
   return (
-    <div className="flex flex-col items-center justify-center min-h-screen bg-[#FFF0F3] dark:bg-gray-900 p-6 transition-colors">
-      <div className="mb-8 p-4 bg-white dark:bg-gray-800 rounded-full shadow-sm">
+    <div className="flex flex-col items-center justify-center min-h-screen p-6 transition-colors">
+      <div className="mb-8 p-6 neu-flat rounded-full">
         <Lock className="w-8 h-8 text-[#E84C7C]" />
       </div>
       
@@ -112,14 +110,14 @@ const PinLock: React.FC<PinLockProps> = ({
       </p>
 
       {/* Dots */}
-      <div className="flex gap-4 mb-12">
+      <div className="flex gap-6 mb-12">
         {[0, 1, 2, 3].map((i) => (
           <div
             key={i}
             className={`w-4 h-4 rounded-full transition-all duration-300 ${
               i < pin.length 
-                ? isError ? 'bg-red-500' : 'bg-[#E84C7C]' 
-                : 'bg-gray-200 dark:bg-gray-700'
+                ? isError ? 'bg-red-500 shadow-md' : 'neu-active bg-[#E84C7C] scale-110' 
+                : 'neu-pressed'
             }`}
           />
         ))}
@@ -131,7 +129,7 @@ const PinLock: React.FC<PinLockProps> = ({
           <button
             key={num}
             onClick={() => handleNumClick(num)}
-            className="w-16 h-16 rounded-full bg-white dark:bg-gray-800 text-xl font-semibold text-gray-700 dark:text-gray-200 shadow-sm active:bg-gray-50 dark:active:bg-gray-700 active:scale-95 transition-all flex items-center justify-center mx-auto"
+            className="neu-btn-round w-16 h-16 text-2xl font-semibold"
           >
             {num}
           </button>
@@ -139,13 +137,13 @@ const PinLock: React.FC<PinLockProps> = ({
         <div /> {/* Spacer */}
         <button
           onClick={() => handleNumClick(0)}
-          className="w-16 h-16 rounded-full bg-white dark:bg-gray-800 text-xl font-semibold text-gray-700 dark:text-gray-200 shadow-sm active:bg-gray-50 dark:active:bg-gray-700 active:scale-95 transition-all flex items-center justify-center mx-auto"
+          className="neu-btn-round w-16 h-16 text-2xl font-semibold"
         >
           0
         </button>
         <button
           onClick={handleDelete}
-          className="w-16 h-16 rounded-full text-sm font-semibold text-gray-500 dark:text-gray-400 flex items-center justify-center mx-auto active:scale-95 transition-all"
+          className="w-16 h-16 flex items-center justify-center font-bold text-gray-500 active:scale-95 transition-all"
         >
           Del
         </button>
@@ -155,7 +153,7 @@ const PinLock: React.FC<PinLockProps> = ({
       {!isSetup && onReset && (
         <button 
           onClick={() => setShowResetConfirm(true)}
-          className="text-sm text-gray-400 dark:text-gray-500 underline decoration-dotted hover:text-[#E84C7C] transition-colors"
+          className="text-xs text-gray-400 dark:text-gray-500 underline decoration-dotted hover:text-[#E84C7C] transition-colors"
         >
           Forgot PIN? / Reset App
         </button>

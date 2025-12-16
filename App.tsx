@@ -13,11 +13,9 @@ import { Home, Calendar, PlusCircle, BarChart2, Activity, Settings as SettingsIc
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, isToday, addMonths, subMonths, subDays, parseISO } from 'date-fns';
 import { getDayStatus, calculateWaterTarget } from './utils/calculations';
 
-// Notification Logic (Imports from root utils)
 import { syncProfileToIDB, getLastNotification, logNotificationSent } from './utils/db';
 import { triggerLocalNotification, checkPeriodicNotifications, checkMoodTrigger } from './utils/scheduler';
 
-// --- STORAGE CONSTANTS ---
 const USER_KEY_PREFIX = 'KIMI_USER_';
 const LOGS_KEY_PREFIX = 'KIMI_LOGS_';
 const LEGACY_PROFILE_KEY_PREFIX = 'KIMI_PROFILE_';
@@ -37,7 +35,6 @@ export default function App() {
   const [loginError, setLoginError] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
 
-  // --- NOTIFICATION SETUP ---
   useEffect(() => {
     if ('Notification' in window && Notification.permission === 'default') {
         Notification.requestPermission();
@@ -50,7 +47,7 @@ export default function App() {
                 try {
                     // @ts-ignore
                     await registration.periodicSync.register('kimi-pms-notification-sync', {
-                        minInterval: 10 * 60 * 1000, // 10 minutes
+                        minInterval: 10 * 60 * 1000,
                     });
                 } catch (e) {
                     console.log("Periodic Sync not supported/allowed", e);
@@ -67,7 +64,6 @@ export default function App() {
     return () => clearInterval(intervalId);
   }, []);
 
-  // --- SYNC STATE TO INDEXEDDB ---
   useEffect(() => {
     if (state.user && state.cycle && state.activeProfileId) {
         const profileData: ProfileData = {
@@ -79,7 +75,6 @@ export default function App() {
     }
   }, [state.user, state.cycle, state.logs, state.activeProfileId]);
 
-  // Theme Handling
   useEffect(() => {
     const storedTheme = localStorage.getItem('KIMI_THEME');
     const isDark = storedTheme === 'dark';
@@ -103,7 +98,6 @@ export default function App() {
       }
   }, [state.darkMode]);
 
-  // Navigation Handling
   useEffect(() => {
     const handlePopState = (event: PopStateEvent) => {
       if (state.view !== 'HOME' && state.view !== 'PIN' && state.view !== 'ONBOARDING' && state.view !== 'BOOT' && state.view !== 'LANDING' && state.view !== 'SPLASH') {
@@ -148,8 +142,6 @@ export default function App() {
       }
   };
 
-  // --- STORAGE HELPERS ---
-
   const saveProfileDataToStorage = (id: string, data: ProfileData, pin: string) => {
     const userPayload = {
       user: data.user,
@@ -192,6 +184,7 @@ export default function App() {
         ids.forEach(id => {
             const userKey = `${USER_KEY_PREFIX}${id}`;
             const logsKey = `${LOGS_KEY_PREFIX}${id}`;
+            
             const userEnc = localStorage.getItem(userKey);
             const logsEnc = localStorage.getItem(logsKey);
 
@@ -471,8 +464,10 @@ export default function App() {
       }
   };
 
+  // --- RENDERERS ---
+
   if (state.view === 'SPLASH') return <SplashScreen onComplete={handleSplashComplete} />;
-  if (state.view === 'BOOT') return <div className="min-h-screen nm-bg" />;
+  if (state.view === 'BOOT') return <div className="min-h-screen" />;
   
   const renderCalendar = () => {
     const start = startOfMonth(currentDate);
@@ -481,39 +476,56 @@ export default function App() {
     const weekDays = ['S','M','T','W','T','F','S'];
 
     return (
-      <div className="p-4 pt-10 h-full overflow-y-auto nm-bg pb-32">
+      <div className="p-4 pt-10 h-full overflow-y-auto pb-32">
         <div className="flex justify-between items-center mb-6">
-           <button onClick={() => setCurrentDate(subMonths(currentDate, 1))} className="nm-btn w-10 h-10 flex items-center justify-center text-[var(--nm-accent)]">&lt;</button>
+           <button onClick={() => setCurrentDate(subMonths(currentDate, 1))} className="neu-btn-round w-10 h-10">&lt;</button>
            <h2 className="text-xl font-bold text-[#2D2D2D] dark:text-white">{format(currentDate, 'MMMM yyyy')}</h2>
-           <button onClick={() => setCurrentDate(addMonths(currentDate, 1))} className="nm-btn w-10 h-10 flex items-center justify-center text-[var(--nm-accent)]">&gt;</button>
+           <button onClick={() => setCurrentDate(addMonths(currentDate, 1))} className="neu-btn-round w-10 h-10">&gt;</button>
         </div>
 
-        <div className="grid grid-cols-7 gap-2 mb-2">
-          {weekDays.map(d => <div key={d} className="text-center text-gray-400 dark:text-gray-500 text-sm font-medium">{d}</div>)}
+        <div className="neu-flat p-4 mb-4">
+            <div className="grid grid-cols-7 gap-2 mb-2">
+            {weekDays.map(d => <div key={d} className="text-center text-gray-400 text-sm font-bold">{d}</div>)}
+            </div>
+
+            <div className="grid grid-cols-7 gap-y-4 gap-x-2">
+            {days.map(day => {
+                let status = state.cycle ? getDayStatus(day, state.cycle, state.user || undefined) : 'none';
+                if (state.logs[format(day, 'yyyy-MM-dd')]?.flow) status = 'period_past';
+
+                let bgClass = '';
+                let textClass = 'text-gray-600 dark:text-gray-300';
+                
+                if (status === 'period') { bgClass = 'bg-[#E84C7C] text-white shadow-md'; textClass = 'text-white'; }
+                else if (status === 'ovulation') { bgClass = 'bg-[#7B86CB] text-white shadow-md'; textClass = 'text-white'; }
+                else if (status === 'fertile') { bgClass = 'neu-pressed text-[#E84C7C]'; textClass = 'text-[#E84C7C]'; }
+                else if (status === 'period_past') { bgClass = 'bg-[#E84C7C] opacity-60 text-white'; textClass = 'text-white'; }
+                else if (isToday(day)) { bgClass = 'border-2 border-[#E84C7C]'; }
+
+                return (
+                <div key={day.toString()} className="flex flex-col items-center">
+                    <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold transition-all ${bgClass} ${textClass}`}>
+                    {format(day, 'd')}
+                    </div>
+                </div>
+                );
+            })}
+            </div>
         </div>
-
-        <div className="grid grid-cols-7 gap-y-4 gap-x-2">
-           {days.map(day => {
-             let status = state.cycle ? getDayStatus(day, state.cycle, state.user || undefined) : 'none';
-             if (state.logs[format(day, 'yyyy-MM-dd')]?.flow) status = 'period_past';
-
-             let bg = 'bg-transparent';
-             let text = 'text-gray-700 dark:text-gray-300';
-             let shadow = '';
-             
-             if (status === 'period') { bg = 'bg-[var(--nm-accent)]'; text = 'text-white'; shadow = 'shadow-md'; }
-             else if (status === 'ovulation') { bg = 'bg-[#7B86CB]'; text = 'text-white'; shadow = 'shadow-md'; }
-             else if (status === 'fertile') { bg = 'nm-surface'; text = 'text-[var(--nm-accent)]'; }
-             else if (status === 'period_past') { bg = 'bg-[var(--nm-accent)] opacity-50'; text = 'text-white'; }
-
-             return (
-               <div key={day.toString()} className="flex flex-col items-center">
-                 <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium transition-colors ${bg} ${text} ${shadow} ${isToday(day) ? 'border-2 border-[var(--nm-accent)]' : ''}`}>
-                   {format(day, 'd')}
-                 </div>
-               </div>
-             );
-           })}
+        
+        <div className="flex flex-wrap justify-center gap-4 mt-8 px-4">
+           <div className="flex items-center gap-2">
+              <div className="w-3 h-3 rounded-full bg-[#E84C7C]"></div>
+              <span className="text-xs font-medium text-gray-500">Period</span>
+           </div>
+           <div className="flex items-center gap-2">
+              <div className="w-3 h-3 rounded-full bg-[#7B86CB]"></div>
+              <span className="text-xs font-medium text-gray-500">Ovulation</span>
+           </div>
+           <div className="flex items-center gap-2">
+              <div className="w-3 h-3 rounded-full bg-pink-100 border border-[#E84C7C]"></div>
+              <span className="text-xs font-medium text-gray-500">Fertile</span>
+           </div>
         </div>
       </div>
     );
@@ -521,28 +533,28 @@ export default function App() {
 
   const renderHome = () => {
     return (
-        <div className="flex flex-col h-full overflow-y-auto no-scrollbar nm-bg pb-32">
+        <div className="flex flex-col h-full overflow-y-auto no-scrollbar pb-32">
         <header className="p-6 pb-2 pt-12 flex justify-between items-start">
             <div>
                 <h1 className="text-2xl font-bold text-[#2D2D2D] dark:text-white">Hello, {state.user?.name}</h1>
-                <p className="text-gray-500 dark:text-gray-400 text-sm">{state.user?.relationship === 'Self' ? 'Tracking for You' : `Tracking for ${state.user?.name}`}</p>
+                <p className="text-gray-500 text-sm">{state.user?.relationship === 'Self' ? 'Tracking for You' : `Tracking for ${state.user?.name}`}</p>
             </div>
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-4">
                 <div className="flex -space-x-3 items-center">
                     {(Object.values(state.profiles) as ProfileData[]).map(p => (
                         <button 
                             key={p.user.id}
                             onClick={() => switchProfile(p.user.id)}
-                            className={`w-10 h-10 rounded-full flex items-center justify-center text-xs font-bold transition-transform hover:scale-110 shadow-sm border-2 border-white ${state.activeProfileId === p.user.id ? 'bg-[var(--nm-accent)] text-white z-10 scale-110' : 'bg-gray-200 text-gray-500 opacity-70'}`}
+                            className={`w-10 h-10 rounded-full flex items-center justify-center text-xs font-bold transition-transform hover:scale-110 ${state.activeProfileId === p.user.id ? 'neu-active z-10 scale-110' : 'neu-flat text-gray-400'}`}
                         >
                             {p.user.name.charAt(0).toUpperCase()}
                         </button>
                     ))}
-                    <button onClick={() => setState(s => ({...s, view: 'ONBOARDING'}))} className="nm-btn w-10 h-10 rounded-full flex items-center justify-center text-[var(--nm-accent)]">
+                    <button onClick={() => setState(s => ({...s, view: 'ONBOARDING'}))} className="neu-btn-round w-10 h-10">
                         <Plus size={16} />
                     </button>
                 </div>
-                <button onClick={() => setState(s => ({...s, view: 'SETTINGS'}))} className="nm-btn w-10 h-10 flex items-center justify-center text-gray-500">
+                <button onClick={() => setState(s => ({...s, view: 'SETTINGS'}))} className="neu-btn-round w-10 h-10">
                     <SettingsIcon size={20} />
                 </button>
             </div>
@@ -553,16 +565,255 @@ export default function App() {
   };
 
   const renderInsights = () => {
-      // (Insights rendering logic truncated for brevity, but follows same pattern of replacing bg-white with nm-card)
-      // I will assume standard Insights page but wrapped in nm-bg
-      return (
-        <div className="p-6 h-full overflow-y-auto pb-32 nm-bg">
-             <h2 className="text-2xl font-bold text-[#2D2D2D] dark:text-white mb-6">Insights</h2>
-             <div className="nm-card p-6 mb-6">
-                 <p className="text-gray-500">Charts and analysis would go here using the soft 3D style.</p>
-             </div>
+    const logs = Object.values(state.logs) as DailyLog[];
+    const totalDays = logs.length;
+    
+    // Data Accumulators
+    const symptomsByCategory: Record<string, Record<string, number>> = {
+        Head: {}, Body: {}, Cervix: {}, Fluid: {}, Abdomen: {}, Mental: {}
+    };
+    const moodMap: Record<string, number> = {};
+    
+    let totalWater = 0;
+    let waterLogCount = 0;
+    let totalSleep = 0;
+    let sleepLogCount = 0;
+    
+    let gymMinutes = 0;
+    let yogaMinutes = 0;
+
+    logs.forEach(log => {
+        if (log.detailedSymptoms && log.detailedSymptoms.length > 0) {
+             log.detailedSymptoms.forEach(s => {
+                 const cat = s.category || 'Body';
+                 if (!symptomsByCategory[cat]) symptomsByCategory[cat] = {};
+                 symptomsByCategory[cat][s.name] = (symptomsByCategory[cat][s.name] || 0) + 1;
+             });
+        }
+
+        (log.mood || []).forEach(m => moodMap[m] = (moodMap[m] || 0) + 1);
+        
+        if (log.waterIntake > 0) {
+            totalWater += log.waterIntake;
+            waterLogCount++;
+        }
+        if (log.sleepDuration > 0) {
+            totalSleep += log.sleepDuration;
+            sleepLogCount++;
+        }
+
+        if (log.didExercise) {
+             const duration = log.exerciseDuration || 30;
+             if (log.exerciseType === 'Yoga') {
+                 yogaMinutes += duration;
+             } else {
+                 gymMinutes += duration;
+             }
+        }
+    });
+
+    const topMoods = Object.entries(moodMap).sort(([,a], [,b]) => b - a).slice(0, 6);
+    
+    const avgWater = waterLogCount > 0 ? Math.round(totalWater / waterLogCount) : 0;
+    const avgSleep = sleepLogCount > 0 ? Math.round(totalSleep / sleepLogCount) : 0;
+    const avgSleepH = Math.floor(avgSleep / 60);
+    const avgSleepM = avgSleep % 60;
+    
+    const gymH = Math.floor(gymMinutes / 60);
+    const gymM = gymMinutes % 60;
+    const yogaH = Math.floor(yogaMinutes / 60);
+    const yogaM = yogaMinutes % 60;
+
+    const last7Days = Array.from({length: 7}, (_, i) => {
+        const d = subDays(new Date(), 6 - i);
+        return format(d, 'yyyy-MM-dd');
+    });
+
+    const chartData = last7Days.map(date => {
+        const entry = state.logs[date];
+        return {
+            label: format(parseISO(date), 'EEE'),
+            water: entry?.waterIntake || 0,
+            sleep: entry?.sleepDuration ? entry.sleepDuration / 60 : 0
+        };
+    });
+
+    const sortedLogs = logs.sort((a, b) => b.date.localeCompare(a.date));
+    const historyGroups: { title: string; logs: DailyLog[] }[] = [];
+    
+    sortedLogs.forEach(log => {
+        const title = format(parseISO(log.date), 'MMMM yyyy');
+        let group = historyGroups.find(g => g.title === title);
+        if (!group) {
+            group = { title, logs: [] };
+            historyGroups.push(group);
+        }
+        group.logs.push(log);
+    });
+
+    return (
+        <div className="p-6 h-full overflow-y-auto pb-32">
+            <h2 className="text-2xl font-bold text-[#2D2D2D] dark:text-white mb-6">Insights</h2>
+            
+            <div className="neu-flat p-5 mb-6">
+                <h3 className="font-bold text-gray-700 dark:text-gray-200 mb-4 flex items-center gap-2">
+                    <BarChart2 size={18} className="text-[#E84C7C]" /> 
+                    Weekly Trends
+                </h3>
+                
+                <div className="mb-6">
+                    <div className="flex items-center gap-2 mb-2 text-xs text-gray-500 font-bold uppercase tracking-wider">
+                        <Droplet size={12} className="text-blue-400" /> Hydration
+                    </div>
+                    <div className="flex items-end justify-between gap-2 h-24">
+                        {chartData.map((d, i) => (
+                            <div key={i} className="flex flex-col items-center flex-1 group">
+                                <div className="w-full neu-pressed rounded-md relative h-20 flex items-end overflow-hidden">
+                                    <div 
+                                        className="w-full bg-blue-400 transition-all duration-500"
+                                        style={{ height: `${Math.min(100, (d.water / 3000) * 100)}%` }} 
+                                    />
+                                </div>
+                                <span className="text-[10px] text-gray-400 mt-1">{d.label}</span>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+
+                <div>
+                    <div className="flex items-center gap-2 mb-2 text-xs text-gray-500 font-bold uppercase tracking-wider">
+                        <Moon size={12} className="text-indigo-400" /> Sleep
+                    </div>
+                    <div className="flex items-end justify-between gap-2 h-24">
+                        {chartData.map((d, i) => (
+                            <div key={i} className="flex flex-col items-center flex-1 group">
+                                <div className="w-full neu-pressed rounded-md relative h-20 flex items-end overflow-hidden">
+                                    <div 
+                                        className="w-full bg-indigo-400 transition-all duration-500"
+                                        style={{ height: `${Math.min(100, (d.sleep / 12) * 100)}%` }} 
+                                    />
+                                </div>
+                                <span className="text-[10px] text-gray-400 mt-1">{d.label}</span>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4 mb-4">
+                <div className="neu-flat p-4 flex flex-col items-center justify-center text-center">
+                    <Droplet className="text-blue-400 mb-2" size={24} />
+                    <span className="text-xs text-gray-500 uppercase font-bold tracking-wider mb-1">Avg Hydration</span>
+                    <span className="text-xl font-bold text-gray-800 dark:text-white">{avgWater} ml</span>
+                </div>
+                <div className="neu-flat p-4 flex flex-col items-center justify-center text-center">
+                    <Moon className="text-indigo-400 mb-2" size={24} />
+                    <span className="text-xs text-gray-500 uppercase font-bold tracking-wider mb-1">Avg Sleep</span>
+                    <span className="text-xl font-bold text-gray-800 dark:text-white">{avgSleepH}h {avgSleepM}m</span>
+                </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4 mb-6">
+                <div className="neu-flat p-4 flex flex-col items-center justify-center text-center">
+                    <Dumbbell className="text-orange-400 mb-2" size={24} />
+                    <span className="text-xs text-gray-500 uppercase font-bold tracking-wider mb-1">Gym</span>
+                    <span className="text-xl font-bold text-gray-800 dark:text-white">{gymH}h {gymM}m</span>
+                </div>
+                <div className="neu-flat p-4 flex flex-col items-center justify-center text-center">
+                    <Sparkles className="text-pink-400 mb-2" size={24} />
+                    <span className="text-xs text-gray-500 uppercase font-bold tracking-wider mb-1">Yoga</span>
+                    <span className="text-xl font-bold text-gray-800 dark:text-white">{yogaH}h {yogaM}m</span>
+                </div>
+            </div>
+
+            <div className="neu-flat p-6 mb-6">
+                <h3 className="font-semibold text-lg mb-4 dark:text-gray-200 flex items-center gap-2"><Smile className="text-orange-400" size={20} /> Mood Patterns</h3>
+                <div className="flex flex-wrap gap-2">
+                    {topMoods.length > 0 ? topMoods.map(([mood, count], i) => (
+                        <div key={mood} className={`px-3 py-1.5 rounded-full text-sm font-medium flex items-center gap-2 ${i === 0 ? 'neu-active' : 'neu-pressed text-gray-500'}`}>
+                            <span>{mood}</span>
+                            <span className="text-xs font-bold opacity-70">{count}</span>
+                        </div>
+                    )) : <p className="text-gray-400 text-sm italic">No mood data yet.</p>}
+                </div>
+            </div>
+
+            <div className="neu-flat p-6 mb-6">
+                <h3 className="font-semibold text-lg mb-4 dark:text-gray-200 flex items-center gap-2">
+                    <Activity className="text-purple-500" size={20} /> Symptoms
+                </h3>
+                
+                <div className="space-y-6">
+                    {Object.entries(symptomsByCategory).map(([category, items]) => {
+                        const entries = Object.entries(items).sort(([,a], [,b]) => b - a);
+                        if (entries.length === 0) return null;
+
+                        return (
+                            <div key={category}>
+                                <h4 className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-3 pl-2 border-l-2 border-purple-200">{category}</h4>
+                                <div className="space-y-3 pl-2">
+                                    {entries.map(([sym, count]) => (
+                                        <div key={sym} className="flex items-center justify-between">
+                                            <span className="text-gray-600 dark:text-gray-300 text-sm font-medium">{sym}</span>
+                                            <div className="flex items-center gap-2 flex-1 ml-4 justify-end">
+                                                <div className="w-24 h-2 neu-pressed rounded-full overflow-hidden">
+                                                    <div className="h-full bg-purple-400 rounded-full" style={{ width: `${(count / totalDays) * 100}%` }} />
+                                                </div>
+                                                <span className="text-xs text-gray-400 font-medium w-4 text-right">{count}</span>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        );
+                    })}
+                    {Object.values(symptomsByCategory).every(cat => Object.keys(cat).length === 0) && (
+                        <p className="text-gray-400 text-sm italic text-center py-2">No symptoms logged yet.</p>
+                    )}
+                </div>
+            </div>
+
+            <div className="mt-8">
+                <h3 className="font-bold text-gray-800 dark:text-white mb-4">Log History</h3>
+                {historyGroups.length > 0 ? historyGroups.map((group) => (
+                    <div key={group.title} className="mb-6">
+                        <h4 className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-3 pl-2 border-l-2 border-[#E84C7C]">{group.title}</h4>
+                        <div className="space-y-3">
+                            {group.logs.map(log => {
+                                const dayNum = format(parseISO(log.date), 'd');
+                                const dayName = format(parseISO(log.date), 'EEEE');
+                                const hasSymptoms = (log.detailedSymptoms?.length || 0) + (log.symptoms?.length || 0) > 0;
+                                const hasMood = (log.mood?.length || 0) > 0;
+                                
+                                return (
+                                    <div key={log.date} className="neu-flat p-3 flex items-center justify-between">
+                                        <div className="flex items-center gap-3">
+                                            <div className="flex flex-col items-center justify-center w-10 h-10 neu-pressed rounded-lg">
+                                                <span className="text-sm font-bold text-gray-800 dark:text-white">{dayNum}</span>
+                                            </div>
+                                            <div>
+                                                <span className="text-xs font-bold text-gray-500 block">{dayName}</span>
+                                                <div className="flex gap-1 mt-0.5">
+                                                    {log.flow && <span className="w-1.5 h-1.5 rounded-full bg-[#E84C7C]"></span>}
+                                                    {hasSymptoms && <span className="w-1.5 h-1.5 rounded-full bg-purple-400"></span>}
+                                                    {hasMood && <span className="w-1.5 h-1.5 rounded-full bg-orange-400"></span>}
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div className="text-right">
+                                            {log.flow && <span className="text-xs font-bold text-[#E84C7C] px-2 py-1">{log.flow}</span>}
+                                        </div>
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    </div>
+                )) : (
+                    <p className="text-gray-400 text-sm text-center italic py-4">No history recorded yet.</p>
+                )}
+            </div>
         </div>
-      );
+    );
   };
 
   const renderDailyLog = () => {
@@ -586,7 +837,7 @@ export default function App() {
   };
 
   return (
-    <div className={`max-w-md mx-auto nm-bg h-[100dvh] relative shadow-2xl overflow-hidden flex flex-col`}>
+    <div className={`max-w-md mx-auto h-[100dvh] relative shadow-2xl overflow-hidden flex flex-col transition-colors duration-300 bg-transparent`}>
       <main className="flex-1 overflow-hidden relative">
         {state.view === 'HOME' && renderHome()}
         {state.view === 'CALENDAR' && renderCalendar()}
@@ -614,14 +865,14 @@ export default function App() {
       </main>
 
       {showDeleteModal && (
-        <div className="absolute inset-0 z-[60] flex items-center justify-center bg-black/20 p-6 animate-in fade-in duration-200">
-          <div className="nm-card p-6 w-full max-w-sm">
-             <div className="w-12 h-12 rounded-full nm-inset flex items-center justify-center mx-auto mb-4 text-red-500"><Activity size={24} className="rotate-45" /></div>
+        <div className="absolute inset-0 z-[60] flex items-center justify-center bg-black/50 p-6 animate-in fade-in duration-200">
+          <div className="neu-flat p-6 w-full max-w-sm">
+             <div className="w-12 h-12 rounded-full neu-pressed flex items-center justify-center mx-auto mb-4 text-red-500"><Activity size={24} className="rotate-45" /></div>
              <h3 className="text-xl font-bold text-center text-gray-800 dark:text-white mb-2">Delete All Data?</h3>
              <p className="text-center text-gray-500 dark:text-gray-400 mb-6 text-sm">This action cannot be undone.</p>
              <div className="flex flex-col gap-3">
-                 <button onClick={handleExportData} className="w-full py-3 border border-[var(--nm-accent)] text-[var(--nm-accent)] rounded-xl font-bold hover:bg-pink-50">Export Backup</button>
-                 <button onClick={confirmDelete} className="w-full py-3 bg-red-500 hover:bg-red-600 text-white rounded-xl font-bold shadow-md">Yes, Delete</button>
+                 <button onClick={handleExportData} className="neu-btn w-full py-3">Export Backup</button>
+                 <button onClick={confirmDelete} className="neu-btn w-full py-3 text-red-500 border-red-200">Yes, Delete</button>
                  <button onClick={() => setShowDeleteModal(false)} className="w-full py-3 text-gray-500 font-medium">Cancel</button>
              </div>
           </div>
@@ -630,25 +881,23 @@ export default function App() {
 
       {(state.view !== 'LANDING' && state.view !== 'ONBOARDING' && state.view !== 'PIN') && (
         <>
-          <nav className="absolute bottom-0 left-0 w-full nm-card !rounded-t-[2rem] !rounded-b-none border-t border-white/40 flex justify-between px-2 py-3 pb-[calc(1.5rem+env(safe-area-inset-bottom))] z-50">
+          <nav className="absolute bottom-0 left-0 w-full neu-flat rounded-none rounded-t-3xl flex justify-between px-2 py-3 pb-[calc(1.5rem+env(safe-area-inset-bottom))] z-50 border-t-0">
             {[{view: 'HOME', icon: Home, label: 'Home'}, {view: 'CALENDAR', icon: Calendar, label: 'Calendar'}, {view: 'INSIGHTS', icon: BarChart2, label: 'Insights'}, {view: 'MINE', icon: User, label: 'Mine'}].map(item => (
                 <React.Fragment key={item.view}>
                     {item.view === 'INSIGHTS' && <div className="w-16" />}
-                    <button onClick={() => setState(s => ({...s, view: item.view as any}))} className={`flex-1 flex flex-col items-center gap-1 ${state.view === item.view ? 'text-[var(--nm-accent)]' : 'text-gray-400'}`}>
-                        <item.icon size={22} className={state.view === item.view ? 'drop-shadow-sm' : ''} />
-                        <span className="text-[10px] font-bold">{item.label}</span>
+                    <button onClick={() => setState(s => ({...s, view: item.view as any}))} className={`flex-1 flex flex-col items-center gap-1 ${state.view === item.view ? 'text-[#E84C7C]' : 'text-gray-400'}`}>
+                        {state.view === item.view ? 
+                            <div className="neu-active p-2 rounded-xl"><item.icon size={20} /></div> : 
+                            <item.icon size={20} />
+                        }
+                        <span className="text-[10px] font-medium">{item.label}</span>
                     </button>
                 </React.Fragment>
             ))}
           </nav>
-          
-          {/* FAB - Using strict Elevation Button style */}
-          <div className="absolute bottom-[calc(2rem+env(safe-area-inset-bottom))] left-1/2 -translate-x-1/2 z-50">
-            <button 
-                onClick={() => setState(s => ({...s, view: 'DAILY_LOG'}))} 
-                className="w-16 h-16 nm-btn-primary flex items-center justify-center transition-transform"
-            >
-              <Plus size={32} />
+          <div className="absolute bottom-[calc(2.5rem+env(safe-area-inset-bottom))] left-1/2 -translate-x-1/2 z-50">
+            <button onClick={() => setState(s => ({...s, view: 'DAILY_LOG'}))} className={`neu-btn-round w-16 h-16 bg-[#E84C7C] text-[#E84C7C] border-4 border-[#FFF0F3]`}>
+              <PlusCircle size={32} />
             </button>
           </div>
         </>

@@ -22,21 +22,14 @@ const CircularSlider: React.FC<CircularSliderProps> = ({
   const svgRef = useRef<SVGSVGElement>(null);
   const [isDragging, setIsDragging] = useState(false);
 
-  // Configuration for a speedometer style arc
-  // 0 degrees = Right (3 o'clock)
-  // 90 degrees = Bottom (6 o'clock)
-  // 135 degrees = Bottom Left (7:30 o'clock) - START
-  // 270 degrees = Top (12 o'clock)
-  // 405 degrees = Bottom Right (4:30 o'clock) - END (45 degrees)
   const startAngle = 135;
   const endAngle = 405;
-  const angleRange = endAngle - startAngle; // 270 degrees
+  const angleRange = endAngle - startAngle;
 
-  const strokeWidth = 20;
+  const strokeWidth = 24;
   const radius = (size - strokeWidth) / 2;
   const center = size / 2;
 
-  // Helper: degrees to SVG coordinates
   const angleToCoord = (angleInDegrees: number, r: number = radius) => {
     const angleInRadians = angleInDegrees * (Math.PI / 180);
     const x = center + r * Math.cos(angleInRadians);
@@ -50,32 +43,19 @@ const CircularSlider: React.FC<CircularSliderProps> = ({
     const x = clientX - rect.left - center;
     const y = clientY - rect.top - center;
 
-    // Calculate angle in degrees (0-360, 0=Right, 90=Down)
     let angle = Math.atan2(y, x) * (180 / Math.PI);
     if (angle < 0) angle += 360;
 
-    // Map angle to progress
-    // We want 135deg -> 0%
-    // 405deg (45deg) -> 100%
-    
-    // Shift angles so 135 is 0
     let relativeAngle = angle - startAngle;
     if (relativeAngle < 0) relativeAngle += 360;
-
-    // relativeAngle now:
-    // 0 = Start (135deg)
-    // 270 = End (405deg)
-    // > 270 = Dead Zone
 
     let newValue = 0;
 
     if (relativeAngle <= angleRange) {
-        // Inside active range
         newValue = (relativeAngle / angleRange) * 10;
     } else {
-        // In dead zone, snap to nearest end
-        const distToStart = 360 - relativeAngle; // distance to 0 (360)
-        const distToEnd = relativeAngle - angleRange; // distance to 270
+        const distToStart = 360 - relativeAngle;
+        const distToEnd = relativeAngle - angleRange;
         if (distToStart < distToEnd) {
             newValue = 0;
         } else {
@@ -91,12 +71,9 @@ const CircularSlider: React.FC<CircularSliderProps> = ({
     handleInteraction(clientX, clientY);
   };
 
-  const handleMouseDown = (e: React.MouseEvent) => {
-    handleStart(e.clientX, e.clientY);
-  };
-  
+  const handleMouseDown = (e: React.MouseEvent) => handleStart(e.clientX, e.clientY);
   const handleTouchStart = (e: React.TouchEvent) => {
-    e.preventDefault(); // Prevent scrolling while interacting
+    e.preventDefault(); 
     handleStart(e.touches[0].clientX, e.touches[0].clientY);
   };
 
@@ -109,7 +86,7 @@ const CircularSlider: React.FC<CircularSliderProps> = ({
 
   const handleTouchMove = (e: TouchEvent) => {
     if (isDragging) {
-      e.preventDefault(); // Critical for smooth drag on mobile
+      e.preventDefault();
       handleInteraction(e.touches[0].clientX, e.touches[0].clientY);
     }
   };
@@ -131,22 +108,15 @@ const CircularSlider: React.FC<CircularSliderProps> = ({
     };
   }, [isDragging]);
 
-  // Current Knob Position
   const currentAngle = startAngle + (value / 10) * angleRange;
   const knobPos = angleToCoord(currentAngle);
   
-  // Track Paths
   const startCoord = angleToCoord(startAngle);
   const endCoord = angleToCoord(endAngle);
-  // SVG Arc: A rx ry x-axis-rotation large-arc-flag sweep-flag x y
-  // sweep-flag 1 = clockwise
   const largeArcFlag = angleRange > 180 ? 1 : 0;
-
-  // Active Arc Path (from start to current)
   const activeEndCoord = knobPos;
   const activeLargeArc = (currentAngle - startAngle) > 180 ? 1 : 0;
 
-  // Calculate Label Positions (slightly outside radius)
   const labelRadius = radius + 35; 
   const minLabelPos = angleToCoord(startAngle, labelRadius);
   const maxLabelPos = angleToCoord(endAngle, labelRadius);
@@ -165,22 +135,31 @@ const CircularSlider: React.FC<CircularSliderProps> = ({
                 onMouseDown={handleMouseDown}
                 onTouchStart={handleTouchStart}
             >
-                {/* Defs for gradients/shadows */}
                 <defs>
                     <filter id="glow" x="-20%" y="-20%" width="140%" height="140%">
                         <feGaussianBlur stdDeviation="3" result="blur" />
                         <feComposite in="SourceGraphic" in2="blur" operator="over" />
                     </filter>
+                    {/* Inner Shadow for Track to emulate Neumorphic Pressed */}
+                    <filter id="trackInset">
+                        <feOffset dx="2" dy="2" />
+                        <feGaussianBlur stdDeviation="3" result="offset-blur" />
+                        <feComposite operator="out" in="SourceGraphic" in2="offset-blur" result="inverse" />
+                        <feFlood floodColor="black" floodOpacity="0.15" result="color" />
+                        <feComposite operator="in" in="color" in2="inverse" result="shadow" />
+                        <feComposite operator="over" in="shadow" in2="SourceGraphic" />
+                    </filter>
                 </defs>
 
-                {/* Background Track */}
+                {/* Background Track - Neumorphic Inset */}
                 <path
                     d={`M ${startCoord.x} ${startCoord.y} A ${radius} ${radius} 0 ${largeArcFlag} 1 ${endCoord.x} ${endCoord.y}`}
                     fill="none"
                     stroke="#F3F4F6"
                     strokeWidth={strokeWidth}
                     strokeLinecap="round"
-                    className="dark:stroke-gray-700"
+                    filter="url(#trackInset)"
+                    className="dark:stroke-gray-800"
                 />
 
                 {/* Active Progress Track */}
@@ -195,7 +174,7 @@ const CircularSlider: React.FC<CircularSliderProps> = ({
                     />
                 )}
 
-                {/* Knob */}
+                {/* Knob - Protruding */}
                 <circle
                     cx={knobPos.x}
                     cy={knobPos.y}
@@ -203,12 +182,11 @@ const CircularSlider: React.FC<CircularSliderProps> = ({
                     fill="white"
                     stroke={color}
                     strokeWidth={4}
-                    className="shadow-lg"
-                    style={{ filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.2))' }}
+                    className="shadow-lg transition-transform active:scale-95"
+                    style={{ filter: 'drop-shadow(3px 3px 6px rgba(0,0,0,0.15))' }}
                 />
             </svg>
             
-            {/* Labels - Absolutely positioned based on calculated coords */}
             <div 
                 className="absolute text-xs font-bold text-gray-400 pointer-events-none"
                 style={{ 
