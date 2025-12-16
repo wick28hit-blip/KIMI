@@ -19,8 +19,8 @@ const ScrollPicker = <T,>({
   value,
   onChange,
   formatLabel = (i) => String(i),
-  height = 200,
-  itemHeight = 50,
+  height = 120, // Reduced default height (3 items visible at 40px)
+  itemHeight = 40, 
   className = '',
   // Default to the original Pink styling if not provided
   highlightClass = 'border-t border-b border-[#E84C7C]/20 bg-white/20 backdrop-blur-sm',
@@ -29,8 +29,9 @@ const ScrollPicker = <T,>({
 }: ScrollPickerProps<T>) => {
   const scrollRef = useRef<HTMLDivElement>(null);
   const isScrolling = useRef(false);
+  const scrollTimeout = useRef<any>(null);
 
-  // Scroll to selected value on mount or when value changes externally
+  // Scroll to selected value on mount or when value changes externally (and user isn't scrolling)
   useEffect(() => {
     if (scrollRef.current && !isScrolling.current) {
       const index = items.indexOf(value);
@@ -45,7 +46,8 @@ const ScrollPicker = <T,>({
     const target = e.currentTarget;
     const scrollTop = target.scrollTop;
     
-    // Calculate index based on scroll position + half item height for better centering detection
+    // Calculate index based on scroll position
+    // Adding 0.5 helps trigger the change closer to the center line
     const index = Math.round(scrollTop / itemHeight);
     
     if (index >= 0 && index < items.length) {
@@ -56,20 +58,24 @@ const ScrollPicker = <T,>({
     }
 
     // Reset scrolling flag after a delay to allow external updates again
-    clearTimeout((target as any)._scrollTimeout);
-    (target as any)._scrollTimeout = setTimeout(() => {
+    if (scrollTimeout.current) clearTimeout(scrollTimeout.current);
+    scrollTimeout.current = setTimeout(() => {
       isScrolling.current = false;
+      // Force alignment if it drifted slightly (optional, but good for polish)
+      if (Math.abs(scrollTop - index * itemHeight) > 1) {
+          target.scrollTo({ top: index * itemHeight, behavior: 'smooth' });
+      }
     }, 150);
   };
 
   return (
     <div 
-      className={`relative overflow-hidden ${className}`}
+      className={`relative overflow-hidden touch-none select-none ${className}`}
       style={{ 
         height: height,
-        // CSS Mask for smooth fade out at top and bottom without using solid colors
-        maskImage: 'linear-gradient(to bottom, transparent, black 20%, black 80%, transparent)',
-        WebkitMaskImage: 'linear-gradient(to bottom, transparent, black 20%, black 80%, transparent)'
+        // CSS Mask for smooth fade out at top and bottom
+        maskImage: 'linear-gradient(to bottom, transparent, black 15%, black 85%, transparent)',
+        WebkitMaskImage: 'linear-gradient(to bottom, transparent, black 15%, black 85%, transparent)'
       }}
     >
       {/* Selection Highlight */}
@@ -85,7 +91,7 @@ const ScrollPicker = <T,>({
       <div
         ref={scrollRef}
         onScroll={handleScroll}
-        className="h-full overflow-y-scroll no-scrollbar scroll-smooth wheel-snap py-[calc(50%-25px)] relative z-10"
+        className="h-full overflow-y-scroll no-scrollbar scroll-smooth wheel-snap relative z-10 overscroll-contain"
         style={{ 
           scrollSnapType: 'y mandatory',
           paddingTop: (height - itemHeight) / 2,
@@ -97,7 +103,7 @@ const ScrollPicker = <T,>({
           return (
             <div
               key={index}
-              className={`flex items-center justify-center transition-all duration-300 wheel-item ${
+              className={`flex items-center justify-center transition-all duration-200 wheel-item ${
                 isSelected 
                   ? selectedItemClass
                   : itemClass

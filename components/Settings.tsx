@@ -71,34 +71,34 @@ const ReminderEditor = ({
     return (
         <div className="fixed inset-0 z-[70] flex items-end justify-center bg-black/60 backdrop-blur-sm animate-in fade-in" onClick={onCancel}>
             <div 
-                className="neu-flat bg-white dark:bg-gray-800 w-full max-w-md p-6 pb-8 animate-in slide-in-from-bottom duration-300 relative"
+                className="neu-flat bg-white dark:bg-gray-800 w-full max-w-md p-6 pb-6 animate-in slide-in-from-bottom duration-300 relative"
                 onClick={e => e.stopPropagation()}
                 style={{ borderBottomLeftRadius: 0, borderBottomRightRadius: 0 }}
             >
                 <div className="absolute top-4 left-1/2 -translate-x-1/2 w-12 h-1.5 bg-gray-300 dark:bg-gray-600 rounded-full"></div>
                 
-                <div className="flex justify-between items-center mb-6 mt-4">
+                <div className="flex justify-between items-center mb-4 mt-2">
                     <h3 className="text-xl font-bold text-gray-800 dark:text-white">Edit Reminder</h3>
                     <button onClick={onCancel} className="neu-btn-round w-10 h-10">
                         <X size={20} />
                     </button>
                 </div>
 
-                <div className="mb-6 px-2">
+                <div className="mb-4 px-2">
                      <p className="text-sm font-bold text-[#E84C7C] mb-1">{config.category}</p>
                      <h2 className="text-2xl font-bold text-gray-800 dark:text-white">{config.label}</h2>
                 </div>
 
-                <div className="neu-pressed flex items-center justify-center gap-4 mb-8 p-4">
+                <div className="neu-pressed flex items-center justify-center gap-4 mb-6 p-4">
                     <div className="flex flex-col items-center">
-                        <div className="h-[120px] w-[60px] relative">
+                        <div className="h-[100px] w-[60px] relative">
                             <ScrollPicker 
                                 items={hoursRange}
                                 value={selectedH}
                                 onChange={setSelectedH}
                                 formatLabel={(h) => h.toString().padStart(2, '0')}
-                                height={120}
-                                itemHeight={40}
+                                height={100}
+                                itemHeight={34}
                                 highlightClass="neu-active rounded-lg"
                             />
                         </div>
@@ -106,14 +106,14 @@ const ReminderEditor = ({
                     </div>
                     <span className="text-2xl font-bold text-gray-300 pb-6">:</span>
                     <div className="flex flex-col items-center">
-                        <div className="h-[120px] w-[60px] relative">
+                        <div className="h-[100px] w-[60px] relative">
                             <ScrollPicker 
                                 items={minutesRange}
                                 value={selectedM}
                                 onChange={setSelectedM}
                                 formatLabel={(m) => m.toString().padStart(2, '0')}
-                                height={120}
-                                itemHeight={40}
+                                height={100}
+                                itemHeight={34}
                                 highlightClass="neu-active rounded-lg"
                             />
                         </div>
@@ -121,7 +121,7 @@ const ReminderEditor = ({
                     </div>
                 </div>
 
-                <div className="mb-8">
+                <div className="mb-6">
                     <label className="flex items-center gap-2 text-sm font-bold text-gray-600 dark:text-gray-300 mb-4 px-2">
                         <Calendar size={16} /> Repeat On
                     </label>
@@ -132,7 +132,7 @@ const ReminderEditor = ({
                                 <button
                                     key={day}
                                     onClick={() => toggleDay(idx)}
-                                    className={`w-10 h-10 rounded-full flex items-center justify-center text-xs font-bold transition-all ${
+                                    className={`w-9 h-9 rounded-full flex items-center justify-center text-[10px] font-bold transition-all ${
                                         isSelected 
                                         ? 'neu-active scale-110' 
                                         : 'neu-pressed text-gray-400'
@@ -150,7 +150,7 @@ const ReminderEditor = ({
 
                 <button 
                     onClick={handleSave}
-                    className="neu-btn w-full py-4 flex items-center justify-center gap-2"
+                    className="neu-btn w-full py-3 flex items-center justify-center gap-2"
                 >
                     <Check size={20} /> Save Changes
                 </button>

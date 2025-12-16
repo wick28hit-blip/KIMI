@@ -175,11 +175,13 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete, isAddingProfile = f
     switch (step) {
       case 0: // Relationship Selection
         return (
-           <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 h-full flex flex-col justify-center">
-            <h1 className="text-3xl font-bold text-[#E84C7C] mb-2">{isAddingProfile ? 'New Profile' : 'Welcome to KIMI'}</h1>
-            <p className="text-gray-500 mb-8">Who are you tracking for?</p>
+           <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 h-full flex flex-col pt-12">
+            <div className="mb-6 shrink-0">
+                <h1 className="text-3xl font-bold text-[#E84C7C] mb-2">{isAddingProfile ? 'New Profile' : 'Welcome'}</h1>
+                <p className="text-gray-500">Who are you tracking for?</p>
+            </div>
             
-            <div className="space-y-4">
+            <div className="flex-1 flex flex-col justify-center gap-4">
                 <button 
                     onClick={() => { setRelationship('Self'); next(); }}
                     className={`w-full p-4 rounded-xl flex items-center gap-4 transition-all ${relationship === 'Self' ? 'neu-active' : 'neu-flat'}`}
@@ -215,92 +217,110 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete, isAddingProfile = f
 
       case 1: // Name & Age
         return (
-          <div className="animate-in fade-in slide-in-from-right-8 duration-300 h-full flex flex-col justify-center">
-            <h2 className="text-2xl font-bold text-[#2D2D2D] dark:text-white mb-2">Profile Details</h2>
-            <p className="text-gray-500 mb-8">Let's get to know {relationship === 'Self' ? 'you' : 'them'} better.</p>
+          <div className="animate-in fade-in slide-in-from-right-8 duration-300 h-full flex flex-col pt-12">
+            <div className="mb-8 shrink-0">
+                <h2 className="text-2xl font-bold text-[#2D2D2D] dark:text-white mb-2">Profile Details</h2>
+                <p className="text-gray-500">Let's get to know {relationship === 'Self' ? 'you' : 'them'} better.</p>
+            </div>
             
-            <div className="neu-pressed p-4 rounded-xl flex items-center gap-3 mb-6">
-              <User className="text-gray-400" />
-              <input
-                type="text"
-                placeholder={relationship === 'Self' ? "What's your name?" : "What's her name?"}
-                className="flex-1 bg-transparent outline-none text-lg text-[#2D2D2D] dark:text-white placeholder-gray-400"
-                value={name}
-                onChange={e => setName(e.target.value)}
-              />
+            <div className="flex-1 flex flex-col gap-6">
+                <div className="neu-pressed p-4 rounded-xl flex items-center gap-3">
+                <User className="text-gray-400" />
+                <input
+                    type="text"
+                    placeholder={relationship === 'Self' ? "What's your name?" : "What's her name?"}
+                    className="flex-1 bg-transparent outline-none text-lg text-[#2D2D2D] dark:text-white placeholder-gray-400"
+                    value={name}
+                    onChange={e => setName(e.target.value)}
+                />
+                </div>
+                <div className="neu-pressed p-4 rounded-xl flex items-center gap-3">
+                <span className="text-gray-400 w-8 text-center text-sm font-bold">Age</span>
+                <input
+                    type="number"
+                    placeholder="Age"
+                    className="flex-1 bg-transparent outline-none text-lg text-[#2D2D2D] dark:text-white placeholder-gray-400"
+                    value={age}
+                    onChange={e => setAge(parseInt(e.target.value))}
+                />
+                </div>
             </div>
-             <div className="neu-pressed p-4 rounded-xl flex items-center gap-3">
-              <span className="text-gray-400 w-6 text-center text-sm font-bold">Age</span>
-              <input
-                type="number"
-                placeholder="Age"
-                className="flex-1 bg-transparent outline-none text-lg text-[#2D2D2D] dark:text-white placeholder-gray-400"
-                value={age}
-                onChange={e => setAge(parseInt(e.target.value))}
-              />
+            
+            <div className="mt-auto pt-6">
+                <button 
+                disabled={!name}
+                onClick={next}
+                className="neu-btn w-full py-4 rounded-xl font-semibold disabled:opacity-50"
+                >
+                Continue
+                </button>
             </div>
-            <button 
-              disabled={!name}
-              onClick={next}
-              className="neu-btn w-full mt-12 py-4 rounded-xl font-semibold disabled:opacity-50"
-            >
-              Continue
-            </button>
           </div>
         );
 
       case 2: // Cycle Data
         const currentPickerDays = Array.from({ length: getDaysInMonth(pickerDate) }, (_, i) => i + 1);
 
+        // Using flex-col and justify-between to ensure it fits without scrolling on SE2
         return (
-          <div className="flex flex-col h-full max-h-[80vh] animate-in fade-in slide-in-from-right-8 duration-300">
-            <h2 className="text-2xl font-bold text-[#2D2D2D] dark:text-white mb-4 shrink-0">Cycle Details</h2>
+          <div className="flex flex-col h-full animate-in fade-in slide-in-from-right-8 duration-300 pt-8">
+            <div className="shrink-0 mb-2">
+                <h2 className="text-2xl font-bold text-[#2D2D2D] dark:text-white mb-1">Cycle Details</h2>
+                <p className="text-sm text-gray-500">Provide accurate data for better predictions.</p>
+            </div>
             
-            <div className="flex-1 overflow-y-auto no-scrollbar min-h-0 pr-1">
-              <label className="block text-sm font-medium text-gray-500 mb-2">Last Period Start Date</label>
-              <div className="flex gap-4 mb-6">
-                <ScrollPicker 
-                  items={currentPickerDays} 
-                  value={pickerDate.getDate()} 
-                  onChange={handleRestrictedDayChange}
-                  className="flex-1"
-                  height={140}
-                  highlightClass="neu-pressed rounded-lg"
-                />
-                <ScrollPicker 
-                  items={validMonthNames} 
-                  value={format(pickerDate, 'MMMM')} 
-                  onChange={handleRestrictedMonthChange}
-                  className="flex-[1.5]"
-                  height={140}
-                  highlightClass="neu-pressed rounded-lg"
-                />
+            <div className="flex-1 flex flex-col justify-evenly min-h-0">
+              
+              <div className="space-y-1">
+                <label className="block text-xs font-bold text-gray-500 mb-2 uppercase tracking-wide">Last Period Start</label>
+                <div className="flex gap-4">
+                    <ScrollPicker 
+                    items={currentPickerDays} 
+                    value={pickerDate.getDate()} 
+                    onChange={handleRestrictedDayChange}
+                    className="flex-1"
+                    height={100} 
+                    itemHeight={32}
+                    highlightClass="neu-pressed rounded-lg"
+                    />
+                    <ScrollPicker 
+                    items={validMonthNames} 
+                    value={format(pickerDate, 'MMMM')} 
+                    onChange={handleRestrictedMonthChange}
+                    className="flex-[1.5]"
+                    height={100}
+                    itemHeight={32}
+                    highlightClass="neu-pressed rounded-lg"
+                    />
+                </div>
               </div>
-              <p className="text-xs text-gray-400 text-center mb-8">Select from current or previous month only</p>
 
-              <label className="block text-sm font-medium text-gray-500 mb-2">Average Cycle Length (Days)</label>
-              <div className="mb-6">
-                 <ScrollPicker 
+              <div className="space-y-1">
+                <label className="block text-xs font-bold text-gray-500 mb-2 uppercase tracking-wide">Cycle Length (Days)</label>
+                <ScrollPicker 
                     items={cycleRange}
                     value={cycleLength}
                     onChange={setCycleLength}
                     className="w-full"
-                    height={100}
+                    height={90}
+                    itemHeight={32}
                     highlightClass="neu-pressed rounded-lg"
-                 />
+                />
               </div>
 
-              <label className="block text-sm font-medium text-gray-500 mb-2">Period Duration (Days)</label>
-              <div className="mb-4">
-                 <ScrollPicker 
+              <div className="space-y-1">
+                <label className="block text-xs font-bold text-gray-500 mb-2 uppercase tracking-wide">Period Duration (Days)</label>
+                <ScrollPicker 
                     items={durationRange}
                     value={periodDuration}
                     onChange={setPeriodDuration}
                     className="w-full"
-                    height={100}
+                    height={90}
+                    itemHeight={32}
                     highlightClass="neu-pressed rounded-lg"
-                 />
+                />
               </div>
+
             </div>
 
             <div className="pt-4 shrink-0">
@@ -320,8 +340,9 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete, isAddingProfile = f
               label="Rate Stress Level" 
               color="#F87171"
               maxLabel="Extreme"
+              size={240} // Smaller for SE2
             />
-            <button onClick={next} className="neu-btn w-full mt-12 py-4 rounded-xl font-semibold">
+            <button onClick={next} className="neu-btn w-full mt-8 py-4 rounded-xl font-semibold">
               Next
             </button>
           </div>
@@ -337,8 +358,9 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete, isAddingProfile = f
               color="#818CF8"
               minLabel="Good Sleep"
               maxLabel="Insomnia"
+              size={240}
             />
-            <button onClick={next} className="neu-btn w-full mt-12 py-4 rounded-xl font-semibold">
+            <button onClick={next} className="neu-btn w-full mt-8 py-4 rounded-xl font-semibold">
               Next
             </button>
           </div>
@@ -353,8 +375,9 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete, isAddingProfile = f
               label="Rate Anxiety Level" 
               color="#F472B6"
               maxLabel="Panic"
+              size={240}
             />
-            <button onClick={next} className="neu-btn w-full mt-12 py-4 rounded-xl font-semibold">
+            <button onClick={next} className="neu-btn w-full mt-8 py-4 rounded-xl font-semibold">
               Next
             </button>
           </div>
@@ -369,8 +392,9 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete, isAddingProfile = f
               label="Rate Depression Level" 
               color="#60A5FA"
               maxLabel="Severe"
+              size={240}
             />
-            <button onClick={next} className="neu-btn w-full mt-12 py-4 rounded-xl font-semibold">
+            <button onClick={next} className="neu-btn w-full mt-8 py-4 rounded-xl font-semibold">
               Next
             </button>
           </div>
@@ -378,11 +402,13 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete, isAddingProfile = f
 
       case 7: // Body Metrics
         return (
-           <div className="animate-in fade-in slide-in-from-right-8 duration-300 flex flex-col h-full max-h-[80vh]">
-             <h2 className="text-2xl font-bold text-[#2D2D2D] dark:text-white mb-4">Body Metrics</h2>
-             <p className="text-gray-500 mb-6">Height and weight help us calculate BMI and hydration needs.</p>
+           <div className="animate-in fade-in slide-in-from-right-8 duration-300 flex flex-col h-full pt-8">
+             <div className="shrink-0 mb-4">
+                 <h2 className="text-2xl font-bold text-[#2D2D2D] dark:text-white mb-2">Body Metrics</h2>
+                 <p className="text-gray-500">Height and weight help us calculate BMI and hydration.</p>
+             </div>
              
-             <div className="flex-1 overflow-y-auto no-scrollbar">
+             <div className="flex-1 flex flex-col justify-center gap-8">
                <div className="flex gap-4">
                   <div className="flex-1">
                       <label className="block text-center font-bold text-gray-500 mb-2">Height (cm)</label>
@@ -390,7 +416,8 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete, isAddingProfile = f
                         items={heightRange} 
                         value={height} 
                         onChange={setHeight}
-                        height={200}
+                        height={160}
+                        itemHeight={34}
                         highlightClass="neu-pressed rounded-lg"
                       />
                   </div>
@@ -400,23 +427,26 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete, isAddingProfile = f
                         items={weightRange} 
                         value={weight} 
                         onChange={setWeight}
-                        height={200}
+                        height={160}
+                        itemHeight={34}
                         highlightClass="neu-pressed rounded-lg"
                       />
                   </div>
                </div>
                
-               <div className="mt-8 p-6 neu-flat rounded-xl text-center">
-                  <span className="text-sm text-gray-500 uppercase tracking-widest font-bold">Calculated BMI</span>
-                  <div className="text-4xl font-bold text-[#E84C7C] mt-2">
+               <div className="p-4 neu-flat rounded-xl text-center mx-4">
+                  <span className="text-xs text-gray-500 uppercase tracking-widest font-bold">Calculated BMI</span>
+                  <div className="text-3xl font-bold text-[#E84C7C] mt-1">
                     {(weight / ((height/100) * (height/100))).toFixed(1)}
                   </div>
                </div>
              </div>
 
-             <button onClick={next} className="neu-btn w-full mt-4 py-4 rounded-xl font-semibold">
-               Calculate Risk
-             </button>
+             <div className="mt-auto pt-4">
+                <button onClick={next} className="neu-btn w-full py-4 rounded-xl font-semibold">
+                Calculate Risk
+                </button>
+             </div>
            </div>
         );
         
@@ -424,11 +454,13 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete, isAddingProfile = f
         const editDays = Array.from({ length: getDaysInMonth(tempEditDate) }, (_, i) => i + 1);
 
         return (
-            <div className="animate-in fade-in slide-in-from-right-8 duration-300 relative h-full flex flex-col">
-                <h2 className="text-2xl font-bold text-[#2D2D2D] dark:text-white mb-2">Verify History</h2>
-                <p className="text-gray-500 mb-6 text-sm">We predicted past dates based on input. Tap to edit if incorrect.</p>
+            <div className="animate-in fade-in slide-in-from-right-8 duration-300 relative h-full flex flex-col pt-8">
+                <div className="shrink-0 mb-4">
+                    <h2 className="text-2xl font-bold text-[#2D2D2D] dark:text-white mb-1">Verify History</h2>
+                    <p className="text-gray-500 text-sm">We predicted past dates based on input. Tap to edit.</p>
+                </div>
                 
-                <div className="space-y-4 mb-8 flex-1">
+                <div className="space-y-3 mb-8 flex-1 overflow-y-auto no-scrollbar">
                     {historyDates.map((date, idx) => (
                         <button 
                             key={idx}
@@ -476,6 +508,7 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete, isAddingProfile = f
                                     onChange={handleTempDayChange}
                                     className="flex-1"
                                     height={128}
+                                    itemHeight={34}
                                     highlightClass="neu-pressed rounded-lg"
                                 />
                                 <ScrollPicker 
@@ -485,6 +518,7 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete, isAddingProfile = f
                                     formatLabel={(m) => m.substring(0, 3)}
                                     className="flex-1"
                                     height={128}
+                                    itemHeight={34}
                                     highlightClass="neu-pressed rounded-lg"
                                 />
                             </div>
@@ -539,17 +573,17 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete, isAddingProfile = f
           </button>
       )}
       
-      <div className="flex-1 mt-12 overflow-hidden relative">
+      <div className="flex-1 mt-6 overflow-hidden relative">
         {renderStep()}
       </div>
       
       {/* Progress Dots */}
       {step > 0 && step < 9 && (
-        <div className="flex justify-center gap-3 mt-4 pb-4">
+        <div className="flex justify-center gap-2 mt-2 pb-2 shrink-0">
           {[1, 2, 3, 4, 5, 6, 7, 8].map((s) => (
             <div 
               key={s} 
-              className={`h-2 rounded-full transition-all duration-300 ${s <= step ? 'w-4 bg-[#E84C7C] shadow-md' : 'w-2 bg-gray-300 dark:bg-gray-700'}`} 
+              className={`h-1.5 rounded-full transition-all duration-300 ${s <= step ? 'w-4 bg-[#E84C7C] shadow-md' : 'w-1.5 bg-gray-300 dark:bg-gray-700'}`} 
             />
           ))}
         </div>
