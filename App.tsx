@@ -318,10 +318,12 @@ export default function App() {
 
         if (Object.keys(importedProfiles).length > 0) {
             // Explicitly cast to array of ProfileData to fix 'unknown' type errors
-            const profilesArray = Object.values(importedProfiles) as any as ProfileData[];
-            const primary = profilesArray.find((p) => p.user?.relationship === 'Self');
+            const profilesArray: ProfileData[] = Object.values(importedProfiles);
+            const primary = profilesArray.find((p: ProfileData) => p.user?.relationship === 'Self');
             
-            persistAllProfiles(importedProfiles, activeId, primary?.user?.pin || '0000');
+            // Safe access using optional chaining on typed variables
+            const pinToUse = primary?.user?.pin || '0000';
+            persistAllProfiles(importedProfiles, activeId, pinToUse);
             
             const activeData = importedProfiles[activeId] as ProfileData | undefined;
             if (activeData) {
