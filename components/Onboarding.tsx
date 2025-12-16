@@ -182,38 +182,38 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete, isAddingProfile = f
       case 0: // Relationship Selection
         return (
            <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 h-full flex flex-col justify-center">
-            <h1 className="text-3xl font-bold text-[var(--nm-primary)] mb-2">{isAddingProfile ? 'New Profile' : 'Welcome to KIMI'}</h1>
-            <p className="text-[var(--nm-text-muted)] mb-8">Who are you tracking for?</p>
+            <h1 className="text-3xl font-bold text-[#E84C7C] mb-2">{isAddingProfile ? 'New Profile' : 'Welcome to KIMI'}</h1>
+            <p className="text-gray-500 mb-8">Who are you tracking for?</p>
             
             <div className="space-y-4">
                 <button 
                     onClick={() => { setRelationship('Self'); next(); }}
-                    className={`w-full p-4 rounded-xl flex items-center gap-4 transition-all ${relationship === 'Self' ? 'nm-inset text-[var(--nm-primary)]' : 'nm-card'}`}
+                    className={`w-full p-4 rounded-xl border-2 flex items-center gap-4 transition-all hover:bg-pink-50 ${relationship === 'Self' ? 'border-[#E84C7C] bg-pink-50' : 'border-gray-100 bg-white'}`}
                 >
                     <div className="p-3 bg-pink-100 rounded-full text-[#E84C7C]">
                         <User />
                     </div>
-                    <span className="font-bold text-lg text-[var(--nm-text)]">Myself</span>
+                    <span className="font-bold text-lg text-gray-700">Myself</span>
                 </button>
 
                 <button 
                     onClick={() => { setRelationship('Daughter'); next(); }}
-                    className={`w-full p-4 rounded-xl flex items-center gap-4 transition-all ${relationship === 'Daughter' ? 'nm-inset text-[var(--nm-primary)]' : 'nm-card'}`}
+                    className={`w-full p-4 rounded-xl border-2 flex items-center gap-4 transition-all hover:bg-pink-50 ${relationship === 'Daughter' ? 'border-[#E84C7C] bg-pink-50' : 'border-gray-100 bg-white'}`}
                 >
                     <div className="p-3 bg-purple-100 rounded-full text-purple-500">
                         <Baby />
                     </div>
-                    <span className="font-bold text-lg text-[var(--nm-text)]">My Daughter</span>
+                    <span className="font-bold text-lg text-gray-700">My Daughter</span>
                 </button>
 
                 <button 
                     onClick={() => { setRelationship('Other'); next(); }}
-                    className={`w-full p-4 rounded-xl flex items-center gap-4 transition-all ${relationship === 'Other' ? 'nm-inset text-[var(--nm-primary)]' : 'nm-card'}`}
+                    className={`w-full p-4 rounded-xl border-2 flex items-center gap-4 transition-all hover:bg-pink-50 ${relationship === 'Other' ? 'border-[#E84C7C] bg-pink-50' : 'border-gray-100 bg-white'}`}
                 >
                     <div className="p-3 bg-blue-100 rounded-full text-blue-500">
                         <Users />
                     </div>
-                    <span className="font-bold text-lg text-[var(--nm-text)]">Someone Else</span>
+                    <span className="font-bold text-lg text-gray-700">Someone Else</span>
                 </button>
             </div>
            </div>
@@ -222,24 +222,24 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete, isAddingProfile = f
       case 1: // Name & Age
         return (
           <div className="animate-in fade-in slide-in-from-right-8 duration-300 h-full flex flex-col justify-center">
-            <h2 className="text-2xl font-bold text-[var(--nm-text)] mb-2">Profile Details</h2>
-            <p className="text-[var(--nm-text-muted)] mb-8">Let's get to know {relationship === 'Self' ? 'you' : 'them'} better.</p>
-            <div className="nm-inset p-4 flex items-center gap-3 mb-4">
-              <User className="text-[var(--nm-text-muted)]" />
+            <h2 className="text-2xl font-bold text-[#2D2D2D] mb-2">Profile Details</h2>
+            <p className="text-gray-500 mb-8">Let's get to know {relationship === 'Self' ? 'you' : 'them'} better.</p>
+            <div className="bg-white p-4 rounded-xl shadow-sm border border-pink-100 flex items-center gap-3 mb-4">
+              <User className="text-gray-400" />
               <input
                 type="text"
                 placeholder={relationship === 'Self' ? "What's your name?" : "What's her name?"}
-                className="flex-1 bg-transparent outline-none text-lg text-[var(--nm-text)] placeholder-[var(--nm-text-muted)]/50"
+                className="flex-1 bg-transparent outline-none text-lg text-[#2D2D2D] placeholder-gray-400"
                 value={name}
                 onChange={e => setName(e.target.value)}
               />
             </div>
-             <div className="nm-inset p-4 flex items-center gap-3">
-              <span className="text-[var(--nm-text-muted)] w-8 text-center text-sm font-bold">Age</span>
+             <div className="bg-white p-4 rounded-xl shadow-sm border border-pink-100 flex items-center gap-3">
+              <span className="text-gray-400 w-6 text-center text-sm font-bold">Age</span>
               <input
                 type="number"
                 placeholder="Age"
-                className="flex-1 bg-transparent outline-none text-lg text-[var(--nm-text)] placeholder-[var(--nm-text-muted)]/50"
+                className="flex-1 bg-transparent outline-none text-lg text-[#2D2D2D] placeholder-gray-400"
                 value={age}
                 onChange={e => setAge(parseInt(e.target.value))}
               />
@@ -247,7 +247,7 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete, isAddingProfile = f
             <button 
               disabled={!name}
               onClick={next}
-              className="nm-btn-primary w-full mt-8 py-4 rounded-xl font-semibold shadow-lg disabled:opacity-50"
+              className="w-full mt-8 bg-[#E84C7C] text-white py-4 rounded-xl font-semibold shadow-lg shadow-pink-200 disabled:opacity-50"
             >
               Continue
             </button>
@@ -260,34 +260,30 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete, isAddingProfile = f
 
         return (
           <div className="flex flex-col h-full max-h-[80vh] animate-in fade-in slide-in-from-right-8 duration-300">
-            <h2 className="text-2xl font-bold text-[var(--nm-text)] mb-4 shrink-0">Cycle Details</h2>
+            <h2 className="text-2xl font-bold text-[#2D2D2D] mb-4 shrink-0">Cycle Details</h2>
             
             <div className="flex-1 overflow-y-auto no-scrollbar min-h-0 pr-1">
-              <label className="block text-sm font-medium text-[var(--nm-text-muted)] mb-2">Last Period Start Date</label>
+              <label className="block text-sm font-medium text-gray-500 mb-2">Last Period Start Date</label>
               <div className="flex gap-2 mb-4">
-                <div className="flex-1 nm-inset overflow-hidden">
-                  <ScrollPicker 
-                    items={currentPickerDays} 
-                    value={pickerDate.getDate()} 
-                    onChange={handleRestrictedDayChange}
-                    className="flex-1"
-                    height={120}
-                  />
-                </div>
-                <div className="flex-[1.5] nm-inset overflow-hidden">
-                  <ScrollPicker 
-                    items={validMonthNames} 
-                    value={format(pickerDate, 'MMMM')} 
-                    onChange={handleRestrictedMonthChange}
-                    className="flex-[1.5]"
-                    height={120}
-                  />
-                </div>
+                <ScrollPicker 
+                  items={currentPickerDays} 
+                  value={pickerDate.getDate()} 
+                  onChange={handleRestrictedDayChange}
+                  className="flex-1"
+                  height={120}
+                />
+                <ScrollPicker 
+                  items={validMonthNames} 
+                  value={format(pickerDate, 'MMMM')} 
+                  onChange={handleRestrictedMonthChange}
+                  className="flex-[1.5]"
+                  height={120}
+                />
               </div>
-              <p className="text-xs text-[var(--nm-text-muted)] text-center mb-6">Select from current or previous month only</p>
+              <p className="text-xs text-gray-400 text-center mb-6">Select from current or previous month only</p>
 
-              <label className="block text-sm font-medium text-[var(--nm-text-muted)] mb-2">Average Cycle Length (Days)</label>
-              <div className="mb-4 nm-inset overflow-hidden">
+              <label className="block text-sm font-medium text-gray-500 mb-2">Average Cycle Length (Days)</label>
+              <div className="mb-4">
                  <ScrollPicker 
                     items={cycleRange}
                     value={cycleLength}
@@ -297,8 +293,8 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete, isAddingProfile = f
                  />
               </div>
 
-              <label className="block text-sm font-medium text-[var(--nm-text-muted)] mb-2">Period Duration (Days)</label>
-              <div className="mb-4 nm-inset overflow-hidden">
+              <label className="block text-sm font-medium text-gray-500 mb-2">Period Duration (Days)</label>
+              <div className="mb-4">
                  <ScrollPicker 
                     items={durationRange}
                     value={periodDuration}
@@ -310,7 +306,7 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete, isAddingProfile = f
             </div>
 
             <div className="pt-4 shrink-0">
-              <button onClick={next} className="nm-btn-primary w-full py-4 rounded-xl font-semibold shadow-lg">
+              <button onClick={next} className="w-full bg-[#E84C7C] text-white py-4 rounded-xl font-semibold shadow-lg shadow-pink-200">
                 Next
               </button>
             </div>
@@ -327,7 +323,7 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete, isAddingProfile = f
               color="#F87171"
               maxLabel="Extreme"
             />
-            <button onClick={next} className="nm-btn-primary w-full mt-8 py-4 rounded-xl font-semibold shadow-lg">
+            <button onClick={next} className="w-full mt-8 bg-[#E84C7C] text-white py-4 rounded-xl font-semibold shadow-lg shadow-pink-200">
               Next
             </button>
           </div>
@@ -344,7 +340,7 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete, isAddingProfile = f
               minLabel="Good Sleep"
               maxLabel="Insomnia"
             />
-            <button onClick={next} className="nm-btn-primary w-full mt-8 py-4 rounded-xl font-semibold shadow-lg">
+            <button onClick={next} className="w-full mt-8 bg-[#E84C7C] text-white py-4 rounded-xl font-semibold shadow-lg shadow-pink-200">
               Next
             </button>
           </div>
@@ -360,7 +356,7 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete, isAddingProfile = f
               color="#F472B6"
               maxLabel="Panic"
             />
-            <button onClick={next} className="nm-btn-primary w-full mt-8 py-4 rounded-xl font-semibold shadow-lg">
+            <button onClick={next} className="w-full mt-8 bg-[#E84C7C] text-white py-4 rounded-xl font-semibold shadow-lg shadow-pink-200">
               Next
             </button>
           </div>
@@ -376,7 +372,7 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete, isAddingProfile = f
               color="#60A5FA"
               maxLabel="Severe"
             />
-            <button onClick={next} className="nm-btn-primary w-full mt-8 py-4 rounded-xl font-semibold shadow-lg">
+            <button onClick={next} className="w-full mt-8 bg-[#E84C7C] text-white py-4 rounded-xl font-semibold shadow-lg shadow-pink-200">
               Next
             </button>
           </div>
@@ -385,44 +381,40 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete, isAddingProfile = f
       case 7: // Body Metrics
         return (
            <div className="animate-in fade-in slide-in-from-right-8 duration-300 flex flex-col h-full max-h-[80vh]">
-             <h2 className="text-2xl font-bold text-[var(--nm-text)] mb-4">Body Metrics</h2>
-             <p className="text-[var(--nm-text-muted)] mb-6">Height and weight help us calculate BMI and hydration needs.</p>
+             <h2 className="text-2xl font-bold text-[#2D2D2D] mb-4">Body Metrics</h2>
+             <p className="text-gray-500 mb-6">Height and weight help us calculate BMI and hydration needs.</p>
              
              <div className="flex-1 overflow-y-auto no-scrollbar">
                <div className="flex gap-4">
                   <div className="flex-1">
-                      <label className="block text-center font-bold text-[var(--nm-text-muted)] mb-2">Height (cm)</label>
-                      <div className="nm-inset overflow-hidden rounded-xl">
-                        <ScrollPicker 
-                          items={heightRange} 
-                          value={height} 
-                          onChange={setHeight}
-                          height={200}
-                        />
-                      </div>
+                      <label className="block text-center font-bold text-gray-500 mb-2">Height (cm)</label>
+                      <ScrollPicker 
+                        items={heightRange} 
+                        value={height} 
+                        onChange={setHeight}
+                        height={200}
+                      />
                   </div>
                   <div className="flex-1">
-                      <label className="block text-center font-bold text-[var(--nm-text-muted)] mb-2">Weight (kg)</label>
-                      <div className="nm-inset overflow-hidden rounded-xl">
-                        <ScrollPicker 
-                          items={weightRange} 
-                          value={weight} 
-                          onChange={setWeight}
-                          height={200}
-                        />
-                      </div>
+                      <label className="block text-center font-bold text-gray-500 mb-2">Weight (kg)</label>
+                      <ScrollPicker 
+                        items={weightRange} 
+                        value={weight} 
+                        onChange={setWeight}
+                        height={200}
+                      />
                   </div>
                </div>
                
-               <div className="mt-8 p-4 nm-card rounded-xl text-center">
-                  <span className="text-sm text-[var(--nm-text-muted)]">Calculated BMI</span>
-                  <div className="text-2xl font-bold text-[var(--nm-text)]">
+               <div className="mt-8 p-4 bg-gray-100 rounded-xl text-center">
+                  <span className="text-sm text-gray-500">Calculated BMI</span>
+                  <div className="text-2xl font-bold text-gray-800">
                     {(weight / ((height/100) * (height/100))).toFixed(1)}
                   </div>
                </div>
              </div>
 
-             <button onClick={next} className="nm-btn-primary w-full mt-4 py-4 rounded-xl font-semibold shadow-lg">
+             <button onClick={next} className="w-full mt-4 bg-[#E84C7C] text-white py-4 rounded-xl font-semibold shadow-lg shadow-pink-200">
                Calculate Risk
              </button>
            </div>
@@ -434,8 +426,8 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete, isAddingProfile = f
 
         return (
             <div className="animate-in fade-in slide-in-from-right-8 duration-300 relative h-full flex flex-col">
-                <h2 className="text-2xl font-bold text-[var(--nm-text)] mb-2">Verify History</h2>
-                <p className="text-[var(--nm-text-muted)] mb-6 text-sm">We predicted past dates based on input. Tap to edit if incorrect.</p>
+                <h2 className="text-2xl font-bold text-[#2D2D2D] mb-2">Verify History</h2>
+                <p className="text-gray-500 mb-6 text-sm">We predicted past dates based on input. Tap to edit if incorrect.</p>
                 
                 <div className="space-y-4 mb-8 flex-1">
                     {historyDates.map((date, idx) => (
@@ -445,12 +437,12 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete, isAddingProfile = f
                                 setEditingIndex(idx);
                                 setTempEditDate(date);
                             }}
-                            className="w-full nm-card p-4 rounded-xl border-l-4 border-[#E84C7C] shadow-sm hover:scale-[0.98] transition-all text-left group"
+                            className="w-full bg-white p-4 rounded-xl border-l-4 border-[#E84C7C] shadow-sm hover:bg-pink-50 transition-colors text-left group"
                         >
-                            <span className="text-xs text-[var(--nm-text-muted)] font-bold uppercase">{idx === 0 ? 'Last Month' : '2 Months Ago'}</span>
+                            <span className="text-xs text-gray-400 font-bold uppercase">{idx === 0 ? 'Last Month' : '2 Months Ago'}</span>
                             <div className="flex justify-between items-center mt-1">
-                                <span className="font-bold text-[var(--nm-text)] text-lg">{format(date, 'MMMM do')}</span>
-                                <div className="flex items-center gap-2 text-[var(--nm-text-muted)] group-hover:text-[var(--nm-primary)] transition-colors">
+                                <span className="font-bold text-gray-800 text-lg">{format(date, 'MMMM do')}</span>
+                                <div className="flex items-center gap-2 text-gray-400 group-hover:text-[#E84C7C] transition-colors">
                                     <span className="text-xs font-bold">Edit</span>
                                     <CalendarCheck size={18} />
                                 </div>
@@ -468,7 +460,7 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete, isAddingProfile = f
                                 next();
                             }
                         }} 
-                        className="nm-btn-primary w-full py-4 rounded-xl font-semibold shadow-lg"
+                        className="w-full bg-[#E84C7C] text-white py-4 rounded-xl font-semibold shadow-lg shadow-pink-200"
                     >
                         Yes, Correct
                     </button>
@@ -476,40 +468,36 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete, isAddingProfile = f
                 
                 {/* Date Editor Modal - Unrestricted for corrections */}
                 {editingIndex !== null && (
-                    <div className="absolute inset-0 z-50 bg-[var(--nm-bg)]/90 backdrop-blur-sm flex items-center justify-center p-4">
-                        <div className="nm-card p-6 w-full max-w-sm">
-                            <h3 className="text-lg font-bold text-[var(--nm-text)] mb-4">Edit Date</h3>
+                    <div className="absolute inset-0 z-50 bg-[#FFF0F3]/90 backdrop-blur-sm flex items-center justify-center p-4">
+                        <div className="bg-white p-6 rounded-2xl shadow-xl w-full max-w-sm">
+                            <h3 className="text-lg font-bold text-gray-800 mb-4">Edit Date</h3>
                             <div className="flex gap-2 mb-6 h-32">
-                                <div className="flex-1 nm-inset overflow-hidden">
-                                  <ScrollPicker 
-                                      items={editDays} 
-                                      value={tempEditDate.getDate()} 
-                                      onChange={handleTempDayChange}
-                                      className="flex-1"
-                                      height={128}
-                                  />
-                                </div>
-                                <div className="flex-1 nm-inset overflow-hidden">
-                                  <ScrollPicker 
-                                      items={allMonths} 
-                                      value={allMonths[tempEditDate.getMonth()]} 
-                                      onChange={handleTempMonthChange}
-                                      formatLabel={(m) => m.substring(0, 3)}
-                                      className="flex-1"
-                                      height={128}
-                                  />
-                                </div>
+                                <ScrollPicker 
+                                    items={editDays} 
+                                    value={tempEditDate.getDate()} 
+                                    onChange={handleTempDayChange}
+                                    className="flex-1"
+                                    height={128}
+                                />
+                                <ScrollPicker 
+                                    items={allMonths} 
+                                    value={allMonths[tempEditDate.getMonth()]} 
+                                    onChange={handleTempMonthChange}
+                                    formatLabel={(m) => m.substring(0, 3)}
+                                    className="flex-1"
+                                    height={128}
+                                />
                             </div>
                             <div className="flex gap-4">
                                 <button 
                                     onClick={() => setEditingIndex(null)}
-                                    className="flex-1 py-3 text-[var(--nm-text-muted)] font-bold"
+                                    className="flex-1 py-3 text-gray-500 font-bold"
                                 >
                                     Cancel
                                 </button>
                                 <button 
                                     onClick={saveHistoryEdit}
-                                    className="nm-btn-primary flex-1 py-3 rounded-xl font-bold shadow-md"
+                                    className="flex-1 py-3 bg-[#E84C7C] text-white rounded-xl font-bold shadow-md"
                                 >
                                     Save
                                 </button>
@@ -535,17 +523,17 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete, isAddingProfile = f
   };
 
   return (
-    <div className="h-full flex flex-col bg-[var(--nm-bg)] p-6 relative overflow-hidden">
+    <div className="h-full flex flex-col bg-[#FFF0F3] p-6 relative overflow-hidden">
       {step > 0 && step < 9 && (
-        <button onClick={back} className="absolute top-6 left-6 p-2 rounded-full hover:bg-white/50 transition-colors z-10 nm-icon-btn w-10 h-10">
-          <ChevronLeft className="text-[var(--nm-text)]" />
+        <button onClick={back} className="absolute top-6 left-6 p-2 rounded-full hover:bg-white/50 transition-colors z-10">
+          <ChevronLeft className="text-[#2D2D2D]" />
         </button>
       )}
 
       {isAddingProfile && onCancel && (
           <button 
             onClick={onCancel} 
-            className="absolute top-6 right-6 p-2 rounded-full transition-colors z-10 text-gray-500 nm-icon-btn w-10 h-10"
+            className="absolute top-6 right-6 p-2 rounded-full hover:bg-white/50 transition-colors z-10 text-gray-500"
           >
             <X size={24} />
           </button>
@@ -561,7 +549,7 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete, isAddingProfile = f
           {[1, 2, 3, 4, 5, 6, 7, 8].map((s) => (
             <div 
               key={s} 
-              className={`h-2 rounded-full transition-all duration-300 ${s <= step ? 'w-4 bg-[var(--nm-primary)]' : 'w-2 bg-[var(--nm-text-muted)] opacity-30'}`} 
+              className={`h-2 rounded-full transition-all duration-300 ${s <= step ? 'w-4 bg-[#E84C7C]' : 'w-2 bg-gray-200'}`} 
             />
           ))}
         </div>

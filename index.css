@@ -1,156 +1,17 @@
-
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
-
-/* Design Tokens & Theme Variables */
-:root {
-  /* --- REQUESTED PALETTE (Single Theme) --- */
-  
-  /* Background #FFEFF3 */
-  --nm-bg: #FFEFF3;
-  
-  /* Surface (cards, buttons, panels) #F9E6EC */
-  --nm-surface: #F9E6EC;
-  
-  /* Text Primary #6F5A63 */
-  --nm-text: #6F5A63;
-  
-  /* Text Secondary #9A7F89 */
-  --nm-text-muted: #9A7F89;
-  
-  /* Primary Accent #D9467A */
-  --nm-primary: #D9467A;
-  
-  /* Secondary/Danger */
-  --nm-danger: #ef4444;
-  
-  /* --- SOFT 3D SHADOWS --- */
-  /* Top-left highlight: rgba(255,255,255,0.9) */
-  /* Bottom-right shadow: rgba(201,160,174,0.35) */
-  
-  --nm-shadow-out: 
-    6px 6px 12px rgba(201,160,174,0.35), 
-    -6px -6px 12px rgba(255,255,255,0.9);
-    
-  --nm-shadow-out-sm: 
-    3px 3px 6px rgba(201,160,174,0.35), 
-    -3px -3px 6px rgba(255,255,255,0.9);
-    
-  --nm-shadow-in: 
-    inset 4px 4px 8px rgba(201,160,174,0.35), 
-    inset -4px -4px 8px rgba(255,255,255,0.9);
-    
-  --nm-shadow-in-sm: 
-    inset 2px 2px 4px rgba(201,160,174,0.35), 
-    inset -2px -2px 4px rgba(255,255,255,0.9);
-  
-  /* Shapes */
-  --nm-radius-lg: 1.5rem;
-  --nm-radius-md: 1rem;
-  --nm-radius-sm: 0.75rem;
-  --nm-radius-full: 9999px;
-  
-  /* Transitions */
-  --nm-ease: cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-/* Ensure body uses the variables */
 body {
   font-family: 'Quicksand', sans-serif;
-  background-color: var(--nm-bg);
-  color: var(--nm-text);
-  transition: background-color 0.3s var(--nm-ease), color 0.3s var(--nm-ease);
+  background-color: #FFF0F3;
+  color: #2D2D2D;
   overscroll-behavior: none;
+  transition: background-color 0.3s ease, color 0.3s ease;
 }
 
-/* --- COMPONENT CLASSES --- */
-
-/* 1. Soft Surfaces (Cards, Containers) */
-.nm-card {
-  background-color: var(--nm-surface);
-  box-shadow: var(--nm-shadow-out);
-  border-radius: var(--nm-radius-lg);
-  border: 1px solid rgba(255, 255, 255, 0.4); /* Subtle border for definition */
+body.dark {
+  background-color: #111827;
+  color: #F3F4F6;
 }
 
-/* 2. Soft Insets (Inputs, Tracks, Wells) */
-.nm-inset {
-  background-color: var(--nm-surface);
-  box-shadow: var(--nm-shadow-in);
-  border-radius: var(--nm-radius-md);
-  border: none;
-}
-
-/* 3. Soft Buttons */
-.nm-btn {
-  background-color: var(--nm-surface);
-  box-shadow: var(--nm-shadow-out-sm);
-  border-radius: var(--nm-radius-md);
-  color: var(--nm-text);
-  font-weight: 600;
-  border: 1px solid rgba(255, 255, 255, 0.4);
-  cursor: pointer;
-  transition: all 0.2s var(--nm-ease);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.nm-btn:active {
-  box-shadow: var(--nm-shadow-in-sm);
-  transform: translateY(1px);
-}
-
-.nm-btn-primary {
-  background-color: var(--nm-primary);
-  color: white;
-  box-shadow: 
-    6px 6px 12px rgba(217, 70, 122, 0.4), 
-    -6px -6px 12px rgba(255, 255, 255, 0.9);
-}
-.nm-btn-primary:active {
-  box-shadow: inset 3px 3px 6px rgba(0,0,0,0.2);
-}
-
-/* 4. Icon Buttons (Round) */
-.nm-icon-btn {
-  background-color: var(--nm-surface);
-  box-shadow: var(--nm-shadow-out-sm);
-  border-radius: 50%;
-  border: 1px solid rgba(255, 255, 255, 0.4);
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: all 0.2s var(--nm-ease);
-  color: var(--nm-text-muted);
-}
-
-.nm-icon-btn:active, .nm-icon-btn.active {
-  box-shadow: var(--nm-shadow-in-sm);
-  color: var(--nm-primary);
-}
-
-/* 5. Floating Action Button */
-.nm-fab {
-  background-color: var(--nm-surface);
-  box-shadow: var(--nm-shadow-out);
-  border-radius: 50%;
-  color: var(--nm-primary);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border: 1px solid rgba(255, 255, 255, 0.5);
-  cursor: pointer;
-}
-
-.nm-fab:active {
-  box-shadow: var(--nm-shadow-in);
-  transform: scale(0.95);
-}
-
-/* Scrollbar hiding */
+/* Custom Scrollbar hide */
 .no-scrollbar::-webkit-scrollbar {
   display: none;
 }
@@ -159,7 +20,10 @@ body {
   scrollbar-width: none;
 }
 
-/* Utilities */
-.text-primary { color: var(--nm-primary); }
-.text-main { color: var(--nm-text); }
-.text-muted { color: var(--nm-text-muted); }
+/* Wheel Picker Simulation */
+.wheel-snap {
+  scroll-snap-type: y mandatory;
+}
+.wheel-item {
+  scroll-snap-align: center;
+}

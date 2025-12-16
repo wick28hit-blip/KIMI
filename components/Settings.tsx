@@ -1,6 +1,5 @@
-
 import React, { useRef, useState, useEffect } from 'react';
-import { Bell, Moon, Shield, Download, Upload, Trash2, ChevronRight, Lock, Sun, LogOut, UserPlus, Clock, ArrowLeft, X, Check, Calendar, Plus } from 'lucide-react';
+import { Bell, Moon, Shield, Download, Upload, Trash2, ChevronRight, Lock, Sun, LogOut, UserPlus, Clock, ArrowLeft, X, Check, Calendar } from 'lucide-react';
 import { UserProfile, ReminderConfig } from '../types';
 import ScrollPicker from './ScrollPicker';
 
@@ -18,7 +17,7 @@ interface SettingsProps {
   onClose?: () => void;
 }
 
-// Default reminders structure updated with new categories
+// Default reminders structure
 const DEFAULT_REMINDERS: ReminderConfig[] = [
     { id: '1', label: 'Period starts', time: '12:00', isEnabled: true, category: 'Period & fertility', selectedDays: [0,1,2,3,4,5,6] },
     { id: '2', label: 'Period ends', time: '20:00', isEnabled: true, category: 'Period & fertility', selectedDays: [0,1,2,3,4,5,6] },
@@ -34,35 +33,33 @@ const DEFAULT_REMINDERS: ReminderConfig[] = [
     { id: '10', label: 'Drink water reminder', time: '10:00', isEnabled: false, category: 'Lifestyle', selectedDays: [0,1,2,3,4,5,6] },
     { id: '11', label: 'Meditation', time: '20:00', isEnabled: false, category: 'Lifestyle', selectedDays: [0,1,2,3,4,5,6] },
 
-    { id: '12', label: 'PMS relief flow', time: '19:00', isEnabled: false, category: 'Yoga', selectedDays: [0,1,2,3,4,5,6] },
-    { id: '13', label: 'Kegel exercise', time: '18:00', isEnabled: false, category: 'Workout', selectedDays: [1,3,5] }
+    { id: '12', label: 'Kegel exercise', time: '18:00', isEnabled: false, category: 'Exercise', selectedDays: [1,3,5] },
+    { id: '13', label: 'PMS relief flow', time: '19:00', isEnabled: false, category: 'Exercise', selectedDays: [0,1,2,3,4,5,6] }
 ];
 
 const DAYS_OF_WEEK = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
-// --- Helper Component: Unified Reminder Modal (Edit & Create) ---
-interface ReminderModalProps {
-    config?: ReminderConfig; // If present, editing mode
-    newCategory?: string;    // If present, creating mode
-    onSave: (label: string, time: string, days: number[]) => void;
-    onCancel: () => void;
-}
-
-const ReminderModal = ({ config, newCategory, onSave, onCancel }: ReminderModalProps) => {
-    const isEditing = !!config;
-    
-    // Initial State
-    const [label, setLabel] = useState(config?.label || '');
-    const initialTime = config?.time ? config.time.split(':').map(Number) : [8, 0];
-    const [selectedH, setSelectedH] = useState(initialTime[0]);
-    const [selectedM, setSelectedM] = useState(initialTime[1]);
-    const [selectedDays, setSelectedDays] = useState<number[]>(config?.selectedDays || [0,1,2,3,4,5,6]);
+// --- Helper Component: Reminder Editor Modal ---
+const ReminderEditor = ({ 
+    config, 
+    onSave, 
+    onCancel 
+}: { 
+    config: ReminderConfig, 
+    onSave: (time: string, days: number[]) => void, 
+    onCancel: () => void 
+}) => {
+    const [hours, minutes] = config.time.split(':').map(Number);
+    const [selectedH, setSelectedH] = useState(hours);
+    const [selectedM, setSelectedM] = useState(minutes);
+    const [selectedDays, setSelectedDays] = useState<number[]>(config.selectedDays || [0,1,2,3,4,5,6]);
 
     const hoursRange = Array.from({length: 24}, (_, i) => i);
     const minutesRange = Array.from({length: 60}, (_, i) => i);
 
     const toggleDay = (dayIndex: number) => {
         if (selectedDays.includes(dayIndex)) {
+            // Prevent deselecting all days (at least one day required)
             if (selectedDays.length > 1) {
                 setSelectedDays(selectedDays.filter(d => d !== dayIndex));
             }
@@ -72,53 +69,34 @@ const ReminderModal = ({ config, newCategory, onSave, onCancel }: ReminderModalP
     };
 
     const handleSave = () => {
-        if (!label.trim()) return;
         const hStr = selectedH.toString().padStart(2, '0');
         const mStr = selectedM.toString().padStart(2, '0');
-        onSave(label, `${hStr}:${mStr}`, selectedDays);
+        onSave(`${hStr}:${mStr}`, selectedDays);
     };
 
     return (
-        <div className="fixed inset-0 z-[70] flex items-end justify-center bg-[var(--nm-text)]/20 backdrop-blur-sm animate-in fade-in" onClick={onCancel}>
+        <div className="fixed inset-0 z-[70] flex items-end justify-center bg-black/60 backdrop-blur-sm animate-in fade-in" onClick={onCancel}>
             <div 
-                className="bg-[var(--nm-bg)] w-full max-w-md rounded-t-[2.5rem] p-6 pb-8 animate-in slide-in-from-bottom duration-300 relative shadow-2xl"
+                className="bg-white dark:bg-gray-800 w-full max-w-md rounded-t-[2.5rem] p-6 pb-8 animate-in slide-in-from-bottom duration-300 relative shadow-2xl"
                 onClick={e => e.stopPropagation()}
             >
                 {/* Handle */}
-                <div className="absolute top-4 left-1/2 -translate-x-1/2 w-12 h-1.5 bg-[var(--nm-text-muted)]/20 rounded-full"></div>
+                <div className="absolute top-4 left-1/2 -translate-x-1/2 w-12 h-1.5 bg-gray-200 dark:bg-gray-700 rounded-full"></div>
                 
                 <div className="flex justify-between items-center mb-6 mt-2">
-                    <h3 className="text-xl font-bold text-[var(--nm-text)]">
-                        {isEditing ? 'Edit Reminder' : 'New Reminder'}
-                    </h3>
-                    <button onClick={onCancel} className="nm-icon-btn w-8 h-8">
+                    <h3 className="text-xl font-bold text-gray-800 dark:text-white">Edit Reminder</h3>
+                    <button onClick={onCancel} className="p-2 bg-gray-100 dark:bg-gray-700 rounded-full text-gray-500 hover:text-gray-700 dark:hover:text-gray-200">
                         <X size={20} />
                     </button>
                 </div>
 
                 <div className="mb-6">
-                     <p className="text-xs font-bold text-[var(--nm-primary)] uppercase tracking-wider mb-2">
-                        {isEditing ? config.category : newCategory}
-                     </p>
-                     
-                     {isEditing ? (
-                         <h2 className="text-2xl font-bold text-[var(--nm-text)]">{label}</h2>
-                     ) : (
-                         <div className="nm-inset p-3 transition-colors">
-                             <input 
-                                type="text" 
-                                value={label}
-                                onChange={(e) => setLabel(e.target.value)}
-                                placeholder="Enter reminder name..."
-                                className="w-full bg-transparent text-xl font-bold text-[var(--nm-text)] outline-none placeholder-[var(--nm-text-muted)]/50"
-                                autoFocus
-                             />
-                         </div>
-                     )}
+                     <p className="text-sm font-bold text-[#E84C7C] mb-1">{config.category}</p>
+                     <h2 className="text-2xl font-bold text-gray-800 dark:text-white">{config.label}</h2>
                 </div>
 
                 {/* Time Picker */}
-                <div className="flex items-center justify-center gap-4 mb-8 nm-inset p-4">
+                <div className="flex items-center justify-center gap-4 mb-8 bg-gray-50 dark:bg-gray-900/50 rounded-2xl p-4">
                     <div className="flex flex-col items-center">
                         <div className="h-[120px] w-[60px] relative">
                             <ScrollPicker 
@@ -128,14 +106,14 @@ const ReminderModal = ({ config, newCategory, onSave, onCancel }: ReminderModalP
                                 formatLabel={(h) => h.toString().padStart(2, '0')}
                                 height={120}
                                 itemHeight={40}
-                                highlightClass="bg-[var(--nm-primary)]/10 rounded-lg"
-                                selectedItemClass="text-[var(--nm-primary)] font-bold text-2xl scale-110"
-                                itemClass="text-[var(--nm-text-muted)] text-lg opacity-40 scale-90"
+                                highlightClass="bg-gray-200/50 dark:bg-gray-600/50 rounded-lg"
+                                selectedItemClass="text-[#E84C7C] font-bold text-2xl scale-110"
+                                itemClass="text-gray-400 text-lg opacity-40 scale-90"
                             />
                         </div>
-                        <span className="text-[10px] uppercase font-bold text-[var(--nm-text-muted)] mt-2">Hour</span>
+                        <span className="text-[10px] uppercase font-bold text-gray-400 mt-2">Hour</span>
                     </div>
-                    <span className="text-2xl font-bold text-[var(--nm-text-muted)] pb-6">:</span>
+                    <span className="text-2xl font-bold text-gray-300 pb-6">:</span>
                     <div className="flex flex-col items-center">
                         <div className="h-[120px] w-[60px] relative">
                             <ScrollPicker 
@@ -145,18 +123,18 @@ const ReminderModal = ({ config, newCategory, onSave, onCancel }: ReminderModalP
                                 formatLabel={(m) => m.toString().padStart(2, '0')}
                                 height={120}
                                 itemHeight={40}
-                                highlightClass="bg-[var(--nm-primary)]/10 rounded-lg"
-                                selectedItemClass="text-[var(--nm-primary)] font-bold text-2xl scale-110"
-                                itemClass="text-[var(--nm-text-muted)] text-lg opacity-40 scale-90"
+                                highlightClass="bg-gray-200/50 dark:bg-gray-600/50 rounded-lg"
+                                selectedItemClass="text-[#E84C7C] font-bold text-2xl scale-110"
+                                itemClass="text-gray-400 text-lg opacity-40 scale-90"
                             />
                         </div>
-                         <span className="text-[10px] uppercase font-bold text-[var(--nm-text-muted)] mt-2">Min</span>
+                         <span className="text-[10px] uppercase font-bold text-gray-400 mt-2">Min</span>
                     </div>
                 </div>
 
                 {/* Day Picker */}
                 <div className="mb-8">
-                    <label className="flex items-center gap-2 text-sm font-bold text-[var(--nm-text)] mb-4">
+                    <label className="flex items-center gap-2 text-sm font-bold text-gray-600 dark:text-gray-300 mb-4">
                         <Calendar size={16} /> Repeat On
                     </label>
                     <div className="flex justify-between">
@@ -168,8 +146,8 @@ const ReminderModal = ({ config, newCategory, onSave, onCancel }: ReminderModalP
                                     onClick={() => toggleDay(idx)}
                                     className={`w-10 h-10 rounded-full flex items-center justify-center text-xs font-bold transition-all ${
                                         isSelected 
-                                        ? 'nm-inset text-[var(--nm-primary)] scale-105 border border-[var(--nm-primary)]' 
-                                        : 'nm-btn text-[var(--nm-text-muted)]'
+                                        ? 'bg-[#E84C7C] text-white shadow-lg shadow-pink-200 dark:shadow-none scale-110' 
+                                        : 'bg-gray-100 dark:bg-gray-700 text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-600'
                                     }`}
                                 >
                                     {day.charAt(0)}
@@ -177,17 +155,16 @@ const ReminderModal = ({ config, newCategory, onSave, onCancel }: ReminderModalP
                             );
                         })}
                     </div>
-                    <p className="text-center text-xs text-[var(--nm-text-muted)] mt-3">
+                    <p className="text-center text-xs text-gray-400 mt-3">
                         {selectedDays.length === 7 ? 'Repeats Every Day' : selectedDays.length === 0 ? 'Never' : 'Custom Schedule'}
                     </p>
                 </div>
 
                 <button 
                     onClick={handleSave}
-                    disabled={!label.trim()}
-                    className="nm-btn-primary w-full py-4 rounded-xl font-bold flex items-center justify-center gap-2 disabled:opacity-50"
+                    className="w-full py-4 bg-[#E84C7C] text-white rounded-xl font-bold shadow-lg shadow-pink-200 dark:shadow-pink-900/30 active:scale-95 transition-all flex items-center justify-center gap-2"
                 >
-                    <Check size={20} /> {isEditing ? 'Save Changes' : 'Create Reminder'}
+                    <Check size={20} /> Save Changes
                 </button>
             </div>
         </div>
@@ -210,13 +187,7 @@ const Settings: React.FC<SettingsProps> = ({
 }) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [view, setView] = useState<'MAIN' | 'REMINDERS'>('MAIN');
-  
-  // Modal State
-  const [modalConfig, setModalConfig] = useState<{
-      type: 'EDIT' | 'CREATE';
-      config?: ReminderConfig;
-      newCategory?: string;
-  } | null>(null);
+  const [editingReminder, setEditingReminder] = useState<ReminderConfig | null>(null);
   
   // Local state for reminders
   const [reminders, setReminders] = useState<ReminderConfig[]>(() => {
@@ -232,29 +203,15 @@ const Settings: React.FC<SettingsProps> = ({
       setReminders(prev => prev.map(r => r.id === id ? { ...r, isEnabled: !r.isEnabled } : r));
   };
 
-  const handleSaveReminder = (label: string, time: string, days: number[]) => {
-      if (modalConfig?.type === 'EDIT' && modalConfig.config) {
-          // Edit Mode
-          setReminders(prev => prev.map(r => r.id === modalConfig.config!.id ? { 
+  const saveReminderChanges = (time: string, days: number[]) => {
+      if (editingReminder) {
+          setReminders(prev => prev.map(r => r.id === editingReminder.id ? { 
               ...r, 
-              // Note: We don't update label in edit mode to preserve consistency with default IDs, 
-              // but for user-created ones we could. For simplicity, editing time/days is prioritized.
               time, 
               selectedDays: days 
           } : r));
-      } else if (modalConfig?.type === 'CREATE' && modalConfig.newCategory) {
-          // Create Mode
-          const newReminder: ReminderConfig = {
-              id: Date.now().toString(),
-              label,
-              time,
-              isEnabled: true,
-              category: modalConfig.newCategory as any,
-              selectedDays: days
-          };
-          setReminders(prev => [...prev, newReminder]);
+          setEditingReminder(null);
       }
-      setModalConfig(null);
   };
 
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -267,6 +224,7 @@ const Settings: React.FC<SettingsProps> = ({
   const formatDaysSummary = (days?: number[]) => {
       if (!days || days.length === 7) return 'Every day';
       if (days.length === 0) return 'Never';
+      // Sort and map
       const sorted = [...days].sort();
       return sorted.map(d => DAYS_OF_WEEK[d]).join(', ');
   };
@@ -274,49 +232,46 @@ const Settings: React.FC<SettingsProps> = ({
   const ReminderView = () => (
       <div className="p-6 pb-32 animate-in slide-in-from-right duration-300">
           <div className="flex items-center gap-4 mb-8">
-              <button onClick={() => setView('MAIN')} className="nm-icon-btn w-10 h-10">
-                  <ArrowLeft size={24} className="text-[var(--nm-text)]" />
+              <button onClick={() => setView('MAIN')} className="p-2 -ml-2 rounded-full hover:bg-black/5 dark:hover:bg-white/10">
+                  <ArrowLeft size={24} className="text-[#2D2D2D] dark:text-white" />
               </button>
-              <h2 className="text-2xl font-bold text-[var(--nm-text)]">Reminders</h2>
+              <h2 className="text-2xl font-bold text-[#2D2D2D] dark:text-white">Reminders</h2>
           </div>
 
-          {['Period & fertility', 'Medicine', 'Lifestyle', 'Yoga', 'Workout'].map(category => (
+          {['Period & fertility', 'Medicine', 'Lifestyle', 'Exercise'].map(category => (
               <div key={category} className="mb-8">
-                  <h3 className="text-lg font-medium text-[var(--nm-text-muted)] mb-3 px-1">{category}</h3>
-                  <div className="nm-card overflow-hidden">
+                  <h3 className="text-lg font-medium text-gray-500 dark:text-gray-400 mb-3 px-1">{category}</h3>
+                  <div className="bg-[#2D2D44] rounded-2xl overflow-hidden shadow-sm border border-gray-700/50">
                       {reminders.filter(r => r.category === category).map((reminder, idx, arr) => (
                           <div 
                             key={reminder.id} 
-                            onClick={() => setModalConfig({ type: 'EDIT', config: reminder })}
-                            className={`p-4 flex items-center justify-between cursor-pointer active:scale-[0.99] transition-transform ${idx !== arr.length - 1 ? 'border-b border-white/40' : ''}`}
+                            onClick={() => setEditingReminder(reminder)}
+                            className={`p-4 flex items-center justify-between cursor-pointer active:bg-white/5 transition-colors ${idx !== arr.length - 1 ? 'border-b border-gray-700' : ''}`}
                           >
                               <div className="flex-1 mr-4">
-                                  <div className="text-[var(--nm-text)] font-medium mb-1">{reminder.label}</div>
+                                  <div className="text-white font-medium mb-1">{reminder.label}</div>
                                   <div className="flex items-center gap-2 flex-wrap">
-                                      <span className="text-[var(--nm-primary)] font-bold text-sm bg-[var(--nm-primary)]/10 px-2 py-0.5 rounded">{reminder.time}</span>
-                                      <span className="text-[var(--nm-text-muted)] text-xs truncate max-w-[150px]">{formatDaysSummary(reminder.selectedDays)}</span>
+                                      <span className="text-[#E84C7C] font-bold text-sm bg-pink-500/10 px-2 py-0.5 rounded">{reminder.time}</span>
+                                      <span className="text-gray-400 text-xs truncate max-w-[150px]">{formatDaysSummary(reminder.selectedDays)}</span>
                                   </div>
                               </div>
                               
                               <div className="flex items-center gap-3">
                                 <button 
                                     onClick={(e) => { e.stopPropagation(); toggleReminder(reminder.id); }}
-                                    className={`w-12 h-7 rounded-full relative transition-colors duration-300 shadow-inner ${reminder.isEnabled ? 'bg-[var(--nm-primary)]' : 'bg-[var(--nm-text-muted)]/30'}`}
+                                    className={`w-12 h-7 rounded-full relative transition-colors duration-300 ${reminder.isEnabled ? 'bg-[#E84C7C]' : 'bg-gray-600'}`}
                                 >
-                                    <div className={`absolute top-1 w-5 h-5 bg-white rounded-full shadow-md transition-all duration-300 ${reminder.isEnabled ? 'left-6' : 'left-1'}`} />
+                                    <div className={`absolute top-1 w-5 h-5 bg-white rounded-full shadow-sm transition-all duration-300 ${reminder.isEnabled ? 'left-6' : 'left-1'}`} />
                                 </button>
-                                <ChevronRight size={16} className="text-[var(--nm-text-muted)]" />
+                                <ChevronRight size={16} className="text-gray-500" />
                               </div>
                           </div>
                       ))}
-                      {/* Add Button */}
-                      <div 
-                        onClick={() => setModalConfig({ type: 'CREATE', newCategory: category })}
-                        className="p-4 flex items-center justify-between border-t border-white/40 bg-[var(--nm-text-muted)]/5 hover:bg-[var(--nm-text-muted)]/10 transition-colors cursor-pointer"
-                      >
-                          <span className="text-[var(--nm-text-muted)] font-medium text-sm">Add new {category.toLowerCase()} reminder</span>
-                          <div className="w-6 h-6 rounded-full nm-inset text-[var(--nm-text-muted)] flex items-center justify-center">
-                              <Plus size={14} />
+                      {/* Placeholder Add Button */}
+                      <div className="p-4 flex items-center justify-between border-t border-gray-700 bg-[#35354e]/50 hover:bg-[#35354e] transition-colors cursor-pointer">
+                          <span className="text-gray-400 font-medium text-sm">Add new {category.toLowerCase()} reminder</span>
+                          <div className="w-6 h-6 rounded-full bg-[#7B86CB]/20 text-[#7B86CB] flex items-center justify-center">
+                              <PlusIcon />
                           </div>
                       </div>
                   </div>
@@ -326,15 +281,14 @@ const Settings: React.FC<SettingsProps> = ({
   );
 
   return (
-    <div className="flex flex-col h-full overflow-y-auto no-scrollbar pb-32">
+    <div className="flex flex-col h-full bg-[#FFF0F3] dark:bg-gray-900 overflow-y-auto no-scrollbar pb-32 transition-colors duration-300">
       
-      {/* Modal Overlay for Editing/Creating */}
-      {modalConfig && (
-          <ReminderModal 
-            config={modalConfig.config}
-            newCategory={modalConfig.newCategory}
-            onSave={handleSaveReminder} 
-            onCancel={() => setModalConfig(null)} 
+      {/* Modal Overlay for Editing */}
+      {editingReminder && (
+          <ReminderEditor 
+            config={editingReminder} 
+            onSave={saveReminderChanges} 
+            onCancel={() => setEditingReminder(null)} 
           />
       )}
 
@@ -343,34 +297,34 @@ const Settings: React.FC<SettingsProps> = ({
       ) : (
         <div className="p-6">
             <header className="flex justify-between items-center mb-6">
-                <h1 className="text-3xl font-bold text-[var(--nm-text)]">Settings</h1>
+                <h1 className="text-3xl font-bold text-[#2D2D2D] dark:text-white">Settings</h1>
                 {onClose ? (
-                    <button onClick={onClose} className="nm-icon-btn w-10 h-10">
+                    <button onClick={onClose} className="p-2 -mr-2 bg-white dark:bg-gray-800 rounded-full shadow-sm text-gray-400 hover:text-gray-600 dark:hover:text-gray-200">
                         <X size={20} />
                     </button>
                 ) : (
-                    <button className="nm-icon-btn w-10 h-10">
+                    <button className="p-2 bg-white dark:bg-gray-800 rounded-full shadow-sm text-gray-500 dark:text-gray-300">
                         <Bell size={20} />
                     </button>
                 )}
             </header>
 
             {/* Profile Management */}
-            <div className="nm-card p-2 mb-6">
-                <div className="p-4 border-b border-white/40">
-                    <h3 className="font-semibold text-[var(--nm-text)]">Profile Management</h3>
+            <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm p-2 mb-6 border border-pink-50 dark:border-gray-700 transition-colors">
+                <div className="p-4 border-b border-gray-50 dark:border-gray-700">
+                    <h3 className="font-semibold text-gray-800 dark:text-gray-100">Profile Management</h3>
                 </div>
                 
-                <div className="divide-y divide-white/40">
+                <div className="divide-y divide-gray-50 dark:divide-gray-700">
                     {profiles.map(user => (
                         <div key={user.id} className="p-4 flex items-center justify-between">
                             <div className="flex items-center gap-3">
-                                <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold nm-inset ${user.relationship === 'Self' ? 'text-[var(--nm-primary)]' : 'text-[var(--nm-text-muted)]'}`}>
+                                <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold shadow-sm ${user.relationship === 'Self' ? 'bg-pink-100 text-[#E84C7C]' : 'bg-gray-100 text-gray-500'}`}>
                                     {user.name.charAt(0).toUpperCase()}
                                 </div>
                                 <div>
-                                    <div className="text-sm font-medium text-[var(--nm-text)]">{user.name}</div>
-                                    <div className="text-xs text-[var(--nm-text-muted)]">{user.relationship}</div>
+                                    <div className="text-sm font-medium text-gray-800 dark:text-gray-200">{user.name}</div>
+                                    <div className="text-xs text-gray-400">{user.relationship}</div>
                                 </div>
                             </div>
                             {user.relationship !== 'Self' && (
@@ -381,7 +335,7 @@ const Settings: React.FC<SettingsProps> = ({
                                         e.stopPropagation();
                                         onDeleteProfile(user.id);
                                     }}
-                                    className="p-2 text-[var(--nm-text-muted)] hover:text-red-500 rounded-lg transition-colors z-10 relative"
+                                    className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors z-10 relative"
                                     title="Delete Profile"
                                 >
                                     <Trash2 size={16} />
@@ -393,73 +347,73 @@ const Settings: React.FC<SettingsProps> = ({
 
                 <button 
                     onClick={onAddProfile}
-                    className="w-full p-4 flex items-center justify-between hover:bg-white/20 transition-colors text-left border-t border-white/40 rounded-b-xl"
+                    className="w-full p-4 flex items-center justify-between hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors text-left border-t border-gray-50 dark:border-gray-700"
                 >
-                    <div className="flex items-center gap-3 text-[var(--nm-text)]">
+                    <div className="flex items-center gap-3 text-gray-600 dark:text-gray-300">
                     <UserPlus size={18} />
                     <span className="text-sm font-medium">Add Another Profile</span>
                     </div>
-                    <ChevronRight size={16} className="text-[var(--nm-text-muted)]" />
+                    <ChevronRight size={16} className="text-gray-400" />
                 </button>
             </div>
 
             {/* Reminders Entry Point */}
-            <div className="nm-card p-2 mb-6">
+            <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm p-2 mb-6 border border-pink-50 dark:border-gray-700 transition-colors">
                 <button 
                     onClick={() => setView('REMINDERS')}
-                    className="w-full p-4 flex items-center justify-between hover:bg-white/20 transition-colors text-left rounded-xl"
+                    className="w-full p-4 flex items-center justify-between hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors text-left"
                 >
-                    <div className="flex items-center gap-3 text-[var(--nm-text)]">
+                    <div className="flex items-center gap-3 text-gray-600 dark:text-gray-300">
                         <Clock size={18} />
                         <div>
                             <span className="text-sm font-medium block">Reminders</span>
-                            <span className="text-xs text-[var(--nm-text-muted)]">Pill, water, period start</span>
+                            <span className="text-xs text-gray-400">Pill, water, period start</span>
                         </div>
                     </div>
-                    <ChevronRight size={16} className="text-[var(--nm-text-muted)]" />
+                    <ChevronRight size={16} className="text-gray-400" />
                 </button>
             </div>
 
             {/* Privacy & Security */}
-            <div className="nm-card p-2 mb-6">
-                <div className="p-4 border-b border-white/40 flex items-center gap-3">
-                <Shield className="text-[var(--nm-primary)]" size={20} />
+            <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm p-2 mb-6 border border-pink-50 dark:border-gray-700 transition-colors">
+                <div className="p-4 border-b border-gray-50 dark:border-gray-700 flex items-center gap-3">
+                <Shield className="text-[#E84C7C]" size={20} />
                 <div className="flex-1">
-                    <h3 className="font-semibold text-[var(--nm-text)]">Privacy & Security</h3>
-                    <p className="text-xs text-[var(--nm-text-muted)]">Your data is stored locally and encrypted</p>
+                    <h3 className="font-semibold text-gray-800 dark:text-gray-100">Privacy & Security</h3>
+                    <p className="text-xs text-gray-500 dark:text-gray-400">Your data is stored locally and encrypted</p>
                 </div>
                 </div>
                 
-                <div className="p-4 flex items-center justify-between border-b border-white/40">
-                <div className="flex items-center gap-3 text-[var(--nm-text)]">
+                <div className="p-4 flex items-center justify-between">
+                <div className="flex items-center gap-3 text-gray-600 dark:text-gray-300">
                     <Lock size={18} />
                     <span className="text-sm font-medium">PIN Lock</span>
                 </div>
-                <div className="w-11 h-6 bg-[var(--nm-primary)] rounded-full relative shadow-inner">
+                <div className="w-11 h-6 bg-[#E84C7C] rounded-full relative cursor-pointer">
                     <div className="absolute right-1 top-1 w-4 h-4 bg-white rounded-full shadow-sm" />
                 </div>
                 </div>
 
                 <button 
                 onClick={onExport}
-                className="w-full p-4 flex items-center justify-between hover:bg-white/20 transition-colors text-left border-b border-white/40"
+                className="w-full p-4 flex items-center justify-between hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors text-left"
                 >
-                <div className="flex items-center gap-3 text-[var(--nm-text)]">
+                <div className="flex items-center gap-3 text-gray-600 dark:text-gray-300">
                     <Download size={18} />
                     <span className="text-sm font-medium">Export Data</span>
                 </div>
-                <ChevronRight size={16} className="text-[var(--nm-text-muted)]" />
+                <ChevronRight size={16} className="text-gray-400" />
                 </button>
 
                 <button 
                 onClick={() => fileInputRef.current?.click()}
-                className="w-full p-4 flex items-center justify-between hover:bg-white/20 transition-colors text-left rounded-b-xl"
+                className="w-full p-4 flex items-center justify-between hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors text-left"
                 >
-                <div className="flex items-center gap-3 text-[var(--nm-text)]">
+                <div className="flex items-center gap-3 text-gray-600 dark:text-gray-300">
                     <Upload size={18} />
                     <span className="text-sm font-medium">Import Data</span>
                 </div>
-                <ChevronRight size={16} className="text-[var(--nm-text-muted)]" />
+                <ChevronRight size={16} className="text-gray-400" />
                 </button>
                 <input 
                 type="file" 
@@ -471,17 +425,32 @@ const Settings: React.FC<SettingsProps> = ({
             </div>
 
             {/* Preferences */}
-            <div className="nm-card p-4 mb-6">
-                <h3 className="font-semibold text-[var(--nm-text)] mb-4 ml-1">Preferences</h3>
+            <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm p-4 mb-6 border border-pink-50 dark:border-gray-700 transition-colors">
+                <h3 className="font-semibold text-gray-800 dark:text-gray-100 mb-4 ml-1">Preferences</h3>
                 
+                <div 
+                className="flex items-center justify-between mb-6 cursor-pointer" 
+                onClick={onToggleDarkMode}
+                >
+                <div className="flex items-center gap-3 text-gray-600 dark:text-gray-300">
+                    {isDarkMode ? <Sun size={18} /> : <Moon size={18} />}
+                    <span className="text-sm font-medium">{isDarkMode ? 'Light Mode' : 'Dark Mode'}</span>
+                </div>
+                
+                {/* Toggle Switch */}
+                <div className={`w-11 h-6 rounded-full relative transition-colors duration-300 ${isDarkMode ? 'bg-[#E84C7C]' : 'bg-gray-200'}`}>
+                    <div className={`absolute top-1 w-4 h-4 bg-white rounded-full shadow-sm transition-all duration-300 ${isDarkMode ? 'left-6' : 'left-1'}`} />
+                </div>
+                </div>
+
                 <div className="flex items-center justify-between mb-2">
-                <div className="flex items-center gap-3 text-[var(--nm-text)]">
+                <div className="flex items-center gap-3 text-gray-600 dark:text-gray-300">
                     <Bell size={18} />
                     <span className="text-sm font-medium">Test Notification</span>
                 </div>
                 <button 
                     onClick={onTestNotification}
-                    className="nm-btn text-xs px-3 py-1"
+                    className="text-xs font-bold text-[#E84C7C] border border-pink-100 dark:border-pink-900/50 bg-pink-50 dark:bg-pink-900/20 px-3 py-1 rounded-full hover:bg-pink-100 dark:hover:bg-pink-900/40 transition-colors"
                 >
                     Send
                 </button>
@@ -491,32 +460,39 @@ const Settings: React.FC<SettingsProps> = ({
             {/* Log Out Button */}
             <button 
                 onClick={onLogout}
-                className="nm-card w-full p-4 mb-6 flex items-center gap-3 text-[var(--nm-text)] hover:bg-white/20 transition-colors"
+                className="w-full p-4 bg-white dark:bg-gray-800 rounded-2xl shadow-sm mb-6 border border-pink-50 dark:border-gray-700 flex items-center gap-3 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
             >
                 <LogOut size={18} />
                 <span className="font-medium">Log Out</span>
             </button>
 
             {/* Danger Zone */}
-            <div className="border border-[var(--nm-danger)]/30 bg-[var(--nm-danger)]/5 rounded-2xl p-4 mt-auto">
-                <h3 className="font-semibold text-[var(--nm-danger)] mb-2">Danger Zone</h3>
-                <p className="text-xs text-[var(--nm-danger)]/80 mb-4">
+            <div className="border-2 border-red-100 dark:border-red-900/30 bg-red-50/50 dark:bg-red-900/10 rounded-2xl p-4 mt-auto">
+                <h3 className="font-semibold text-red-800 dark:text-red-400 mb-2">Danger Zone</h3>
+                <p className="text-xs text-red-600 dark:text-red-400/80 mb-4">
                 Deleting your data is permanent. Please export your data before proceeding.
                 </p>
                 <button 
                 onClick={onDeleteData}
-                className="w-full py-3 bg-[var(--nm-bg)] border border-[var(--nm-danger)]/50 text-[var(--nm-danger)] rounded-xl font-medium shadow-sm active:scale-95 flex items-center justify-center gap-2 transition-all"
+                className="w-full py-3 bg-white dark:bg-gray-800 border border-red-200 dark:border-red-900/50 text-red-600 dark:text-red-400 rounded-xl font-medium shadow-sm active:bg-red-50 dark:active:bg-red-900/20 flex items-center justify-center gap-2 transition-colors"
                 >
                 <Trash2 size={18} />
                 Delete All Data
                 </button>
             </div>
             
-            <p className="text-center text-xs text-[var(--nm-text-muted)] mt-6 mb-2">v1.4</p>
+            <p className="text-center text-xs text-gray-400 mt-6 mb-2">v1.4</p>
         </div>
       )}
     </div>
   );
 };
+
+// Simple Icon helper
+const PlusIcon = () => (
+    <svg width="12" height="12" viewBox="0 0 12 12" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <path d="M6 1V11M1 6H11" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+    </svg>
+);
 
 export default Settings;
