@@ -40,6 +40,7 @@ body.dark {
 
   /* Raised Card / Surface */
   .neu-flat {
+    @apply relative;
     background: linear-gradient(145deg, #FFF4F7 0%, #F4D6DF 100%);
     border-radius: 1.5rem;
     box-shadow:
@@ -49,7 +50,8 @@ body.dark {
 
   /* Inset / Input / Selected */
   .neu-pressed {
-    background: linear-gradient(145deg, #F4D6DF 0%, #FFF4F7 100%);
+    @apply relative;
+    background: linear-gradient(145deg, #F4D/fw6DF 0%, #FFF4F7 100%);
     border-radius: 1rem;
     box-shadow:
       inset 0px 3px 6px var(--shadow-dark),
@@ -58,6 +60,7 @@ body.dark {
 
   /* Primary Rectangular Button */
   .neu-btn {
+    @apply relative;
     background: linear-gradient(145deg, #FFF4F7 0%, #F4D6DF 100%);
     border-radius: 1rem;
     font-weight: 700;
@@ -77,6 +80,7 @@ body.dark {
 
   /* Circular Icon Button */
   .neu-btn-round {
+    @apply relative;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -98,6 +102,7 @@ body.dark {
 
   /* Active / Selected */
   .neu-active {
+    @apply relative;
     background: linear-gradient(145deg, #F4D6DF 0%, #FFF4F7 100%);
     color: var(--primary-pink);
     box-shadow:

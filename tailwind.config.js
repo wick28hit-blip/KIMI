@@ -2,7 +2,11 @@
 export default {
   content: [
     "./index.html",
-    "./**/*.{js,ts,jsx,tsx}"
+    "./**/*.{js,ts,jsx,tsx}",
+    "./index.tsx",
+    "./App.tsx",
+    "./components/**/*.{ts,tsx}",
+    "./services/**/*.{ts,tsx}"
   ],
 
   safelist: [
@@ -19,3 +23,5 @@ export default {
 
   plugins: [],
 };
+
+
