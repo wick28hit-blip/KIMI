@@ -140,12 +140,12 @@ const CircularSlider: React.FC<CircularSliderProps> = ({
                         <feGaussianBlur stdDeviation="3" result="blur" />
                         <feComposite in="SourceGraphic" in2="blur" operator="over" />
                     </filter>
-                    {/* Inner Shadow for Track to emulate Neumorphic Pressed */}
+                    {/* Updated for 'Dense 3D' look: Deeper offset, higher opacity */}
                     <filter id="trackInset">
-                        <feOffset dx="2" dy="2" />
-                        <feGaussianBlur stdDeviation="3" result="offset-blur" />
+                        <feOffset dx="6" dy="8" />
+                        <feGaussianBlur stdDeviation="7" result="offset-blur" />
                         <feComposite operator="out" in="SourceGraphic" in2="offset-blur" result="inverse" />
-                        <feFlood floodColor="black" floodOpacity="0.15" result="color" />
+                        <feFlood floodColor="black" floodOpacity="0.4" result="color" />
                         <feComposite operator="in" in="color" in2="inverse" result="shadow" />
                         <feComposite operator="over" in="shadow" in2="SourceGraphic" />
                     </filter>
@@ -174,7 +174,7 @@ const CircularSlider: React.FC<CircularSliderProps> = ({
                     />
                 )}
 
-                {/* Knob - Protruding */}
+                {/* Knob - Protruding (High Elevation Shadow) */}
                 <circle
                     cx={knobPos.x}
                     cy={knobPos.y}
@@ -183,7 +183,7 @@ const CircularSlider: React.FC<CircularSliderProps> = ({
                     stroke={color}
                     strokeWidth={4}
                     className="shadow-lg transition-transform active:scale-95"
-                    style={{ filter: 'drop-shadow(3px 3px 6px rgba(0,0,0,0.15))' }}
+                    style={{ filter: 'drop-shadow(8px 8px 16px rgba(0,0,0,0.4))' }}
                 />
             </svg>
             

@@ -1,5 +1,5 @@
 import { addDays, differenceInDays, parseISO, isSameDay, isWithinInterval, subDays } from 'date-fns';
-import { CycleData, UserProfile, PMSAnalysis } from '../types';
+import { CycleData, UserProfile, PMSAnalysis, DailyLog } from '../types';
 
 /**
  * Calculates BMI and normalizes it to a 0-10 score for the risk formula.
@@ -193,4 +193,134 @@ export const getDayStatus = (date: Date, cycleData: CycleData, user?: UserProfil
   }
 
   return 'none';
+};
+
+export const getContextAwareHealthTip = (log: DailyLog | undefined, cycleStatus: string, dayOfCycle: number) => {
+  // Default tip based on cycle status
+  let tip = {
+    title: "Daily Insight",
+    message: "Tracking your symptoms helps us provide better insights.",
+    icon: "Sparkles",
+    color: "text-blue-500",
+    bg: "bg-blue-50 dark:bg-blue-900/20"
+  };
+
+  // Phase based advice
+  if (cycleStatus === 'period' || cycleStatus === 'period_past') {
+     tip = { 
+       title: "Menstrual Phase", 
+       message: "Your body is shedding the lining. Energy might be low. Prioritize warmth and rest.", 
+       icon: "Moon", 
+       color: "text-[#E84C7C]",
+       bg: "bg-pink-50 dark:bg-pink-900/20"
+     };
+  } else if (cycleStatus === 'ovulation' || cycleStatus === 'fertile') {
+     tip = { 
+       title: "Ovulation Phase", 
+       message: "Estrogen is peaking. You likely feel energetic, confident, and social.", 
+       icon: "Star", 
+       color: "text-purple-500",
+       bg: "bg-purple-50 dark:bg-purple-900/20"
+     };
+  } else if (dayOfCycle > 14 && cycleStatus === 'none') { // Luteal approximation
+     tip = { 
+       title: "Luteal Phase", 
+       message: "Progesterone rises. You might feel inward or slower. Gentle yoga is great now.", 
+       icon: "Coffee", 
+       color: "text-indigo-500",
+       bg: "bg-indigo-50 dark:bg-indigo-900/20"
+     };
+  } else if (dayOfCycle <= 14 && cycleStatus === 'none' && dayOfCycle > 5) { // Follicular approximation
+      tip = { 
+       title: "Follicular Phase", 
+       message: "Energy is returning. A great time to start new projects or vigorous exercise.", 
+       icon: "Sun", 
+       color: "text-yellow-500",
+       bg: "bg-yellow-50 dark:bg-yellow-900/20"
+     };
+  }
+
+  if (!log) return tip;
+
+  // Context Overrides (Priority order)
+
+  // 1. Mood (High Priority)
+  if (log.mood && log.mood.length > 0) {
+      if (log.mood.includes('Sad') || log.mood.includes('Depressed') || log.mood.includes('Frustrated')) {
+          return { 
+            title: "Be Gentle With Yourself", 
+            message: "It's a heavy day. Comfort food, a warm blanket, or calling a friend might help.", 
+            icon: "Heart", 
+            color: "text-rose-500",
+            bg: "bg-rose-50 dark:bg-rose-900/20"
+          };
+      }
+      if (log.mood.includes('Anxious') || log.mood.includes('Stress') || log.mood.includes('Tension')) {
+           return { 
+             title: "Breathe Deeply", 
+             message: "Anxiety spikes cortisol. Try box breathing: In 4, Hold 4, Out 4, Hold 4.", 
+             icon: "Wind", 
+             color: "text-cyan-500",
+             bg: "bg-cyan-50 dark:bg-cyan-900/20"
+           };
+      }
+  }
+
+  // 2. Symptoms
+  if (log.detailedSymptoms && log.detailedSymptoms.length > 0) {
+      const cramps = log.detailedSymptoms.find(s => s.name === 'Cramps' || s.name === 'Abdominal cramps');
+      if (cramps) {
+          return { 
+            title: "Soothe the Cramps", 
+            message: "Magnesium supplements, heat patches, or ginger tea are excellent for relief.", 
+            icon: "Flame", 
+            color: "text-orange-500",
+            bg: "bg-orange-50 dark:bg-orange-900/20"
+          };
+      }
+      const headache = log.detailedSymptoms.find(s => s.name === 'Headache' || s.name === 'Migraines');
+      if (headache) {
+           return { 
+             title: "Headache Relief", 
+             message: "Dim the lights and drink water. Screen breaks are essential right now.", 
+             icon: "EyeOff", 
+             color: "text-gray-500",
+             bg: "bg-gray-50 dark:bg-gray-700/30"
+           };
+      }
+      const bloating = log.detailedSymptoms.find(s => s.name === 'Bloating');
+      if (bloating) {
+           return { 
+             title: "Beat the Bloat", 
+             message: "Avoid salty foods today. Peppermint tea or fennel seeds can aid digestion.", 
+             icon: "Coffee", 
+             color: "text-green-500",
+             bg: "bg-green-50 dark:bg-green-900/20"
+           };
+      }
+  }
+
+  // 3. Sleep (If logged and low) - Checked only if no severe symptoms/mood
+  if (log.sleepDuration > 0 && log.sleepDuration < 360) { // < 6 hours
+      return { 
+        title: "Rest Required", 
+        message: "You didn't get much sleep. Take it easy today and aim for an early bedtime.", 
+        icon: "Moon", 
+        color: "text-indigo-500",
+        bg: "bg-indigo-50 dark:bg-indigo-900/20"
+      };
+  }
+
+  // 4. Hydration (If logged and low in afternoon) 
+  if (log.waterIntake > 0 && log.waterIntake < 1000) {
+      return { 
+        title: "Hydration Alert", 
+        message: "Your water intake is low. A glass right now will help with focus and energy.", 
+        icon: "Droplet", 
+        color: "text-blue-500",
+        bg: "bg-blue-50 dark:bg-blue-900/20"
+      };
+  }
+
+  return tip;
 };

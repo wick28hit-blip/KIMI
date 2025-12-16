@@ -246,7 +246,7 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete, isAddingProfile = f
                 </div>
             </div>
             
-            <div className="mt-auto pt-6">
+            <div className="mt-auto pt-6 px-1 pb-1">
                 <button 
                 disabled={!name}
                 onClick={next}
@@ -261,7 +261,6 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete, isAddingProfile = f
       case 2: // Cycle Data
         const currentPickerDays = Array.from({ length: getDaysInMonth(pickerDate) }, (_, i) => i + 1);
 
-        // Using flex-col and justify-between to ensure it fits without scrolling on SE2
         return (
           <div className="flex flex-col h-full animate-in fade-in slide-in-from-right-8 duration-300 pt-8">
             <div className="shrink-0 mb-2">
@@ -323,7 +322,7 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete, isAddingProfile = f
 
             </div>
 
-            <div className="pt-4 shrink-0">
+            <div className="pt-4 px-1 pb-1 shrink-0">
               <button onClick={next} className="neu-btn w-full py-4 rounded-xl font-semibold">
                 Next
               </button>
@@ -340,11 +339,13 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete, isAddingProfile = f
               label="Rate Stress Level" 
               color="#F87171"
               maxLabel="Extreme"
-              size={240} // Smaller for SE2
+              size={240} 
             />
-            <button onClick={next} className="neu-btn w-full mt-8 py-4 rounded-xl font-semibold">
-              Next
-            </button>
+            <div className="w-full px-1 pb-1 mt-8">
+              <button onClick={next} className="neu-btn w-full py-4 rounded-xl font-semibold">
+                Next
+              </button>
+            </div>
           </div>
         );
 
@@ -360,9 +361,11 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete, isAddingProfile = f
               maxLabel="Insomnia"
               size={240}
             />
-            <button onClick={next} className="neu-btn w-full mt-8 py-4 rounded-xl font-semibold">
-              Next
-            </button>
+            <div className="w-full px-1 pb-1 mt-8">
+              <button onClick={next} className="neu-btn w-full py-4 rounded-xl font-semibold">
+                Next
+              </button>
+            </div>
           </div>
         );
 
@@ -377,9 +380,11 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete, isAddingProfile = f
               maxLabel="Panic"
               size={240}
             />
-            <button onClick={next} className="neu-btn w-full mt-8 py-4 rounded-xl font-semibold">
-              Next
-            </button>
+            <div className="w-full px-1 pb-1 mt-8">
+              <button onClick={next} className="neu-btn w-full py-4 rounded-xl font-semibold">
+                Next
+              </button>
+            </div>
           </div>
         );
 
@@ -394,9 +399,11 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete, isAddingProfile = f
               maxLabel="Severe"
               size={240}
             />
-            <button onClick={next} className="neu-btn w-full mt-8 py-4 rounded-xl font-semibold">
-              Next
-            </button>
+            <div className="w-full px-1 pb-1 mt-8">
+              <button onClick={next} className="neu-btn w-full py-4 rounded-xl font-semibold">
+                Next
+              </button>
+            </div>
           </div>
         );
 
@@ -442,7 +449,7 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete, isAddingProfile = f
                </div>
              </div>
 
-             <div className="mt-auto pt-4">
+             <div className="mt-auto pt-4 px-1 pb-1">
                 <button onClick={next} className="neu-btn w-full py-4 rounded-xl font-semibold">
                 Calculate Risk
                 </button>
@@ -481,7 +488,7 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete, isAddingProfile = f
                     ))}
                 </div>
 
-                <div className="mt-auto">
+                <div className="mt-auto px-1 pb-1">
                      <button 
                         onClick={() => {
                             if(isAddingProfile) {
@@ -579,11 +586,11 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete, isAddingProfile = f
       
       {/* Progress Dots */}
       {step > 0 && step < 9 && (
-        <div className="flex justify-center gap-2 mt-2 pb-2 shrink-0">
+        <div className="flex justify-center gap-2 mt-2 pb-2 shrink-0 items-center h-8">
           {[1, 2, 3, 4, 5, 6, 7, 8].map((s) => (
             <div 
               key={s} 
-              className={`h-1.5 rounded-full transition-all duration-300 ${s <= step ? 'w-4 bg-[#E84C7C] shadow-md' : 'w-1.5 bg-gray-300 dark:bg-gray-700'}`} 
+              className={s <= step ? 'neu-dot neu-dot-active' : 'neu-dot neu-dot-inactive'} 
             />
           ))}
         </div>

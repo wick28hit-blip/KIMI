@@ -532,6 +532,10 @@ export default function App() {
   };
 
   const renderHome = () => {
+    // Pass today's log to the dashboard for context-aware tips
+    const todayKey = format(new Date(), 'yyyy-MM-dd');
+    const todayLog = state.logs[todayKey];
+
     return (
         <div className="flex flex-col h-full overflow-y-auto no-scrollbar pb-32">
         <header className="p-6 pb-2 pt-12 flex justify-between items-start">
@@ -559,7 +563,7 @@ export default function App() {
                 </button>
             </div>
         </header>
-        {state.cycle && <BubbleDashboard cycleData={state.cycle} user={state.user} />}
+        {state.cycle && <BubbleDashboard cycleData={state.cycle} user={state.user} dailyLog={todayLog} />}
         </div>
     );
   };

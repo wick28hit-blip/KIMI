@@ -9,9 +9,19 @@
 :root {
   --primary-pink: #E84C7C;
 
-  /* Soft 3D shadow tones */
-  --shadow-light: rgba(255, 255, 255, 0.85);
-  --shadow-dark: rgba(201, 160, 174, 0.32);
+  /* Enhanced 3D shadow tones (Light Mode) */
+  /* Dense, high-contrast shadows for "Cube" look */
+  --shadow-light: rgba(255, 255, 255, 1);
+  --shadow-dark: rgba(166, 118, 135, 0.6); /* Significantly denser/darker */
+}
+
+body.dark {
+  /* Enhanced 3D shadow tones (Dark Mode) */
+  --shadow-light: rgba(255, 255, 255, 0.08);
+  --shadow-dark: rgba(0, 0, 0, 0.95);
+  
+  background: #111827;
+  color: #F3F4F6;
 }
 
 /* ===============================
@@ -20,15 +30,10 @@
 
 body {
   font-family: 'Quicksand', sans-serif;
-  background: linear-gradient(145deg, #FFF4F7 0%, #F4D6DF 100%);
+  background: linear-gradient(145deg, #FFF8FA 0%, #F4D6DF 100%);
   color: #5D5D5D;
   min-height: 100vh;
   overscroll-behavior: none;
-}
-
-body.dark {
-  background: #111827;
-  color: #F3F4F6;
 }
 
 /* ===============================
@@ -38,44 +43,109 @@ body.dark {
 
 @layer utilities {
 
-  /* Raised Card / Surface */
+  /* Raised Card / Surface - 3D CUBE LOOK */
   .neu-flat {
     @apply relative;
     background: linear-gradient(145deg, #FFF4F7 0%, #F4D6DF 100%);
     border-radius: 1.5rem;
+    
+    /* Directional Borders for "Cube" Thickness */
+    border-top: 1px solid rgba(255, 255, 255, 0.95);
+    border-left: 1px solid rgba(255, 255, 255, 0.95);
+    /* Thicker dark borders on bottom/right simulate physical height */
+    border-bottom: 2px solid rgba(166, 118, 135, 0.2); 
+    border-right: 2px solid rgba(166, 118, 135, 0.2);
+
+    /* Dense, Deep Shadows */
     box-shadow:
-      0px 4px 10px var(--shadow-dark),
-      0px -2px 6px var(--shadow-light);
+      12px 12px 30px var(--shadow-dark),
+      -10px -10px 24px var(--shadow-light),
+      inset 0 0 0 1px rgba(255,255,255,0.1); /* Subtle inner rim */
   }
 
-  /* Inset / Input / Selected */
+  body.dark .neu-flat {
+    background: #1F2937;
+    border-top: 1px solid rgba(255,255,255,0.1);
+    border-left: 1px solid rgba(255,255,255,0.1);
+    border-bottom: 2px solid rgba(0,0,0,0.5);
+    border-right: 2px solid rgba(0,0,0,0.5);
+    box-shadow: 
+      12px 12px 32px var(--shadow-dark),
+      -6px -6px 16px var(--shadow-light);
+  }
+
+  /* Inset / Input / Selected - DEEP CUT */
   .neu-pressed {
     @apply relative;
-    background: linear-gradient(145deg, #F4D/fw6DF 0%, #FFF4F7 100%);
+    background: linear-gradient(145deg, #F4D6DF 0%, #FFF4F7 100%);
     border-radius: 1rem;
+    
+    /* Deep Inset Shadows */
     box-shadow:
-      inset 0px 3px 6px var(--shadow-dark),
-      inset 0px -2px 4px var(--shadow-light);
+      inset 8px 8px 16px var(--shadow-dark),
+      inset -8px -8px 16px var(--shadow-light);
+    
+    /* Reverse border logic for inset */
+    border-top: 1px solid rgba(166, 118, 135, 0.1);
+    border-left: 1px solid rgba(166, 118, 135, 0.1);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.5);
+    border-right: 1px solid rgba(255, 255, 255, 0.5);
   }
 
-  /* Primary Rectangular Button */
+  body.dark .neu-pressed {
+    background: #111827;
+    box-shadow:
+      inset 6px 8px 18px rgba(0,0,0,0.95),
+      inset -3px -3px 8px rgba(255,255,255,0.05);
+    border: none;
+  }
+
+  /* Primary Rectangular Button - TACTILE SLAB */
   .neu-btn {
-    @apply relative;
-    background: linear-gradient(145deg, #FFF4F7 0%, #F4D6DF 100%);
+    @apply relative overflow-hidden;
+    background: linear-gradient(145deg, #FFFFFF 0%, #EFDce3 100%);
     border-radius: 1rem;
     font-weight: 700;
     color: var(--primary-pink);
+    
+    /* Pronounced 3D Borders */
+    border-top: 1px solid rgba(255, 255, 255, 0.9);
+    border-left: 1px solid rgba(255, 255, 255, 0.9);
+    border-bottom: 3px solid rgba(166, 118, 135, 0.25); /* Thicker for button */
+    border-right: 2px solid rgba(166, 118, 135, 0.25);
+    
+    /* Pop Shadows */
     box-shadow:
-      0px 6px 14px var(--shadow-dark),
-      0px -3px 8px var(--shadow-light);
-    transition: transform 0.15s ease, box-shadow 0.15s ease;
+      10px 10px 24px var(--shadow-dark),
+      -8px -8px 20px var(--shadow-light),
+      inset 0 1px 2px rgba(255, 255, 255, 0.8);
+      
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  body.dark .neu-btn {
+    background: linear-gradient(145deg, #2a3544 0%, #1a222e 100%);
+    border-top: 1px solid rgba(255,255,255,0.1);
+    border-left: 1px solid rgba(255,255,255,0.1);
+    border-bottom: 3px solid rgba(0,0,0,0.5);
+    border-right: 2px solid rgba(0,0,0,0.5);
+    color: #F472B6;
   }
 
   .neu-btn:active {
-    transform: translateY(1px);
+    transform: translateY(3px) scale(0.98);
+    background: linear-gradient(145deg, #EFDce3 0%, #FFFFFF 100%);
     box-shadow:
-      inset 0px 3px 6px var(--shadow-dark),
-      inset 0px -2px 4px var(--shadow-light);
+      inset 6px 6px 12px var(--shadow-dark),
+      inset -6px -6px 12px var(--shadow-light);
+    border-top: 1px solid rgba(166, 118, 135, 0.1);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.5);
+    border-right: 1px solid rgba(255, 255, 255, 0.5);
+  }
+  
+  body.dark .neu-btn:active {
+     background: #111827;
+     border: none;
   }
 
   /* Circular Icon Button */
@@ -85,29 +155,75 @@ body.dark {
     align-items: center;
     justify-content: center;
     border-radius: 9999px;
-    background: linear-gradient(145deg, #FFF4F7 0%, #F4D6DF 100%);
+    background: linear-gradient(145deg, #FFFFFF 0%, #EFDce3 100%);
     color: #5D5D5D;
+    
+    /* Directional Highlight */
+    border-top: 1px solid rgba(255, 255, 255, 0.9);
+    border-left: 1px solid rgba(255, 255, 255, 0.9);
+    border-bottom: 2px solid rgba(166, 118, 135, 0.15);
+    border-right: 2px solid rgba(166, 118, 135, 0.15);
+    
+    /* High Elevation Shadow */
     box-shadow:
-      0px 5px 12px var(--shadow-dark),
-      0px -2px 6px var(--shadow-light);
+      9px 9px 22px var(--shadow-dark),
+      -7px -7px 18px var(--shadow-light);
+      
     transition: transform 0.15s ease, box-shadow 0.15s ease;
   }
 
-  .neu-btn-round:active {
-    transform: scale(0.96);
-    box-shadow:
-      inset 0px 3px 6px var(--shadow-dark),
-      inset 0px -2px 4px var(--shadow-light);
+  body.dark .neu-btn-round {
+    background: #1F2937;
+    color: #E5E7EB;
+    border: 1px solid rgba(255,255,255,0.05);
+    border-bottom: 2px solid rgba(0,0,0,0.5);
+    border-right: 2px solid rgba(0,0,0,0.5);
   }
 
-  /* Active / Selected */
+  .neu-btn-round:active {
+    transform: scale(0.95);
+    background: linear-gradient(145deg, #EFDce3 0%, #FFFFFF 100%);
+    box-shadow:
+      inset 5px 7px 12px var(--shadow-dark),
+      inset -4px -5px 10px var(--shadow-light);
+    border-color: transparent;
+  }
+
+  /* Active / Selected - Highlighted Inset */
   .neu-active {
     @apply relative;
     background: linear-gradient(145deg, #F4D6DF 0%, #FFF4F7 100%);
     color: var(--primary-pink);
     box-shadow:
-      inset 0px 4px 8px var(--shadow-dark),
-      inset 0px -3px 6px var(--shadow-light);
+      inset 6px 8px 14px var(--shadow-dark),
+      inset -5px -7px 12px var(--shadow-light);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+  }
+  
+  body.dark .neu-active {
+    background: #111827;
+    box-shadow:
+      inset 6px 8px 16px rgba(0,0,0,0.9),
+      inset -3px -3px 8px rgba(255,255,255,0.05);
+  }
+
+  /* 3D Pagination Dots */
+  .neu-dot {
+    @apply h-2 rounded-full transition-all duration-300;
+  }
+  .neu-dot-active {
+    @apply w-6;
+    background: linear-gradient(135deg, #E84C7C 0%, #FF8BA7 100%);
+    box-shadow: 3px 3px 8px rgba(232, 76, 124, 0.5), -2px -2px 4px rgba(255, 255, 255, 0.6);
+  }
+  .neu-dot-inactive {
+    @apply w-2;
+    background: #D1D5DB;
+    box-shadow: inset 1px 1px 3px rgba(0,0,0,0.15);
+  }
+  body.dark .neu-dot-inactive {
+     background: #374151;
+     box-shadow: inset 1px 1px 2px rgba(0,0,0,0.5);
   }
 }
 

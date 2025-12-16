@@ -1,15 +1,21 @@
 import React, { useState } from 'react';
 import { format, differenceInDays } from 'date-fns';
-import { calculateCycle, getDayStatus } from '../utils/calculations';
-import { CycleData, UserProfile } from '../types';
-import { Activity, AlertCircle, X, Info } from 'lucide-react';
+import { calculateCycle, getDayStatus, getContextAwareHealthTip } from '../utils/calculations';
+import { CycleData, UserProfile, DailyLog } from '../types';
+import { Activity, AlertCircle, X, Info, Sparkles, Moon, Sun, Star, Coffee, Droplet, Heart, Wind, Flame, EyeOff } from 'lucide-react';
 
 interface DashboardProps {
   cycleData: CycleData;
   user: UserProfile | null;
+  dailyLog?: DailyLog;
 }
 
-const BubbleDashboard: React.FC<DashboardProps> = ({ cycleData, user }) => {
+// Map string names to Lucide components
+const ICON_MAP: any = { 
+  Sparkles, Moon, Sun, Star, Coffee, Droplet, Heart, Wind, Flame, EyeOff 
+};
+
+const BubbleDashboard: React.FC<DashboardProps> = ({ cycleData, user, dailyLog }) => {
   const [showRiskDetails, setShowRiskDetails] = useState(false);
   
   const calc = calculateCycle(cycleData, user || undefined);
@@ -46,6 +52,10 @@ const BubbleDashboard: React.FC<DashboardProps> = ({ cycleData, user }) => {
   const radius = (size - strokeWidth) / 2;
   const circumference = radius * 2 * Math.PI;
   const strokeDashoffset = circumference - (progressPercent / 100) * circumference;
+
+  // Generate Tip
+  const tip = getContextAwareHealthTip(dailyLog, status, currentCycleDay);
+  const TipIcon = ICON_MAP[tip.icon] || Sparkles;
 
   return (
     <div className="flex flex-col items-center w-full mt-2 relative">
@@ -105,25 +115,40 @@ const BubbleDashboard: React.FC<DashboardProps> = ({ cycleData, user }) => {
             </div>
         </div>
 
+        {/* Dynamic Context-Aware Health Tip */}
+        <div className="w-full px-6 mb-6">
+            <div className="p-4 neu-flat flex items-start gap-4 animate-in slide-in-from-bottom duration-500 delay-300">
+                <div className={`p-3 rounded-full neu-pressed shrink-0 ${tip.color} ${tip.bg || 'bg-gray-50'}`}>
+                    <TipIcon size={20} />
+                </div>
+                <div>
+                    <h3 className={`font-bold text-sm mb-1 ${tip.color} dark:${tip.color}`}>{tip.title}</h3>
+                    <p className="text-xs text-gray-500 dark:text-gray-400 leading-relaxed font-medium">{tip.message}</p>
+                </div>
+            </div>
+        </div>
+
         {calc.isImpacted && calc.pmsAnalysis && (
           <div 
             onClick={() => setShowRiskDetails(true)}
-            className="mb-6 px-4 py-3 neu-flat flex items-center gap-3 max-w-sm text-center cursor-pointer hover:bg-gray-50 transition-colors group"
+            className="mb-6 px-6 w-full"
           >
-             <div className={`p-2 rounded-full neu-pressed ${calc.pmsAnalysis.severity === 'High' ? 'text-red-500' : 'text-orange-500'}`}>
-                <AlertCircle size={18} />
-             </div>
-             <div className="flex-1 text-left">
-                 <div className="flex items-center gap-1">
-                    <span className="text-xs font-bold text-gray-800 dark:text-white">
-                        {calc.pmsAnalysis.severity} PMS Risk Detected
-                    </span>
-                    <Info size={12} className="text-gray-400 opacity-0 group-hover:opacity-100 transition-opacity" />
+            <div className="px-4 py-3 neu-flat flex items-center gap-3 w-full text-center cursor-pointer hover:bg-gray-50 transition-colors group">
+                 <div className={`p-2 rounded-full neu-pressed ${calc.pmsAnalysis.severity === 'High' ? 'text-red-500' : 'text-orange-500'}`}>
+                    <AlertCircle size={18} />
                  </div>
-                 <span className="block text-[10px] text-gray-500 dark:text-gray-400">
-                     Predicted date delayed by <span className="font-bold text-[#E84C7C]">+{calc.impactDelay} days</span>
-                 </span>
-             </div>
+                 <div className="flex-1 text-left">
+                     <div className="flex items-center gap-1">
+                        <span className="text-xs font-bold text-gray-800 dark:text-white">
+                            {calc.pmsAnalysis.severity} PMS Risk Detected
+                        </span>
+                        <Info size={12} className="text-gray-400 opacity-0 group-hover:opacity-100 transition-opacity" />
+                     </div>
+                     <span className="block text-[10px] text-gray-500 dark:text-gray-400">
+                         Predicted date delayed by <span className="font-bold text-[#E84C7C]">+{calc.impactDelay} days</span>
+                     </span>
+                 </div>
+            </div>
           </div>
         )}
 
