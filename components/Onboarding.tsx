@@ -5,7 +5,7 @@ import PinLock from './PinLock';
 import ScrollPicker from './ScrollPicker';
 import CircularSlider from './CircularSlider';
 import { format, getDaysInMonth, setDate, setMonth, setYear, subMonths, subDays, startOfDay } from 'date-fns';
-import { calculateNormalizedBMI } from '../utils/calculations';
+import { calculateNormalizedBMI, calculateWaterTarget } from '../utils/calculations';
 
 interface OnboardingProps {
   onComplete: (user: UserProfile, cycle: CycleData, initialLogs?: Record<string, DailyLog>) => void;
@@ -125,6 +125,7 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete, isAddingProfile = f
 
   const finishOnboarding = (pin: string | null) => {
     const bmi = calculateNormalizedBMI(height, weight);
+    const waterTarget = calculateWaterTarget(age, weight);
     
     const user: UserProfile = {
       id: Date.now().toString(),
@@ -157,7 +158,7 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete, isAddingProfile = f
         initialLogs[dateStr] = {
             date: dateStr,
             waterIntake: 0,
-            waterTarget: 2000,
+            waterTarget: waterTarget,
             sleepDuration: 0,
             sleepTarget: 480,
             flow: 'Medium',
@@ -381,7 +382,7 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete, isAddingProfile = f
         return (
            <div className="animate-in fade-in slide-in-from-right-8 duration-300 flex flex-col h-full max-h-[80vh]">
              <h2 className="text-2xl font-bold text-[#2D2D2D] mb-4">Body Metrics</h2>
-             <p className="text-gray-500 mb-6">Height and weight help us calculate BMI factors for cycle health.</p>
+             <p className="text-gray-500 mb-6">Height and weight help us calculate BMI and hydration needs.</p>
              
              <div className="flex-1 overflow-y-auto no-scrollbar">
                <div className="flex gap-4">

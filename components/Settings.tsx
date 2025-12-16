@@ -1,5 +1,6 @@
+
 import React, { useRef, useState, useEffect } from 'react';
-import { Bell, Moon, Shield, Download, Upload, Trash2, ChevronRight, Lock, Sun, LogOut, UserPlus, Clock, ArrowLeft, X, Check, Calendar } from 'lucide-react';
+import { Bell, Moon, Shield, Download, Upload, Trash2, ChevronRight, Lock, Sun, LogOut, UserPlus, Clock, ArrowLeft, X, Check, Calendar, Plus } from 'lucide-react';
 import { UserProfile, ReminderConfig } from '../types';
 import ScrollPicker from './ScrollPicker';
 
@@ -17,7 +18,7 @@ interface SettingsProps {
   onClose?: () => void;
 }
 
-// Default reminders structure
+// Default reminders structure updated with new categories
 const DEFAULT_REMINDERS: ReminderConfig[] = [
     { id: '1', label: 'Period starts', time: '12:00', isEnabled: true, category: 'Period & fertility', selectedDays: [0,1,2,3,4,5,6] },
     { id: '2', label: 'Period ends', time: '20:00', isEnabled: true, category: 'Period & fertility', selectedDays: [0,1,2,3,4,5,6] },
@@ -33,33 +34,35 @@ const DEFAULT_REMINDERS: ReminderConfig[] = [
     { id: '10', label: 'Drink water reminder', time: '10:00', isEnabled: false, category: 'Lifestyle', selectedDays: [0,1,2,3,4,5,6] },
     { id: '11', label: 'Meditation', time: '20:00', isEnabled: false, category: 'Lifestyle', selectedDays: [0,1,2,3,4,5,6] },
 
-    { id: '12', label: 'Kegel exercise', time: '18:00', isEnabled: false, category: 'Exercise', selectedDays: [1,3,5] },
-    { id: '13', label: 'PMS relief flow', time: '19:00', isEnabled: false, category: 'Exercise', selectedDays: [0,1,2,3,4,5,6] }
+    { id: '12', label: 'PMS relief flow', time: '19:00', isEnabled: false, category: 'Yoga', selectedDays: [0,1,2,3,4,5,6] },
+    { id: '13', label: 'Kegel exercise', time: '18:00', isEnabled: false, category: 'Workout', selectedDays: [1,3,5] }
 ];
 
 const DAYS_OF_WEEK = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
-// --- Helper Component: Reminder Editor Modal ---
-const ReminderEditor = ({ 
-    config, 
-    onSave, 
-    onCancel 
-}: { 
-    config: ReminderConfig, 
-    onSave: (time: string, days: number[]) => void, 
-    onCancel: () => void 
-}) => {
-    const [hours, minutes] = config.time.split(':').map(Number);
-    const [selectedH, setSelectedH] = useState(hours);
-    const [selectedM, setSelectedM] = useState(minutes);
-    const [selectedDays, setSelectedDays] = useState<number[]>(config.selectedDays || [0,1,2,3,4,5,6]);
+// --- Helper Component: Unified Reminder Modal (Edit & Create) ---
+interface ReminderModalProps {
+    config?: ReminderConfig; // If present, editing mode
+    newCategory?: string;    // If present, creating mode
+    onSave: (label: string, time: string, days: number[]) => void;
+    onCancel: () => void;
+}
+
+const ReminderModal = ({ config, newCategory, onSave, onCancel }: ReminderModalProps) => {
+    const isEditing = !!config;
+    
+    // Initial State
+    const [label, setLabel] = useState(config?.label || '');
+    const initialTime = config?.time ? config.time.split(':').map(Number) : [8, 0];
+    const [selectedH, setSelectedH] = useState(initialTime[0]);
+    const [selectedM, setSelectedM] = useState(initialTime[1]);
+    const [selectedDays, setSelectedDays] = useState<number[]>(config?.selectedDays || [0,1,2,3,4,5,6]);
 
     const hoursRange = Array.from({length: 24}, (_, i) => i);
     const minutesRange = Array.from({length: 60}, (_, i) => i);
 
     const toggleDay = (dayIndex: number) => {
         if (selectedDays.includes(dayIndex)) {
-            // Prevent deselecting all days (at least one day required)
             if (selectedDays.length > 1) {
                 setSelectedDays(selectedDays.filter(d => d !== dayIndex));
             }
@@ -69,9 +72,10 @@ const ReminderEditor = ({
     };
 
     const handleSave = () => {
+        if (!label.trim()) return;
         const hStr = selectedH.toString().padStart(2, '0');
         const mStr = selectedM.toString().padStart(2, '0');
-        onSave(`${hStr}:${mStr}`, selectedDays);
+        onSave(label, `${hStr}:${mStr}`, selectedDays);
     };
 
     return (
@@ -84,15 +88,33 @@ const ReminderEditor = ({
                 <div className="absolute top-4 left-1/2 -translate-x-1/2 w-12 h-1.5 bg-gray-200 dark:bg-gray-700 rounded-full"></div>
                 
                 <div className="flex justify-between items-center mb-6 mt-2">
-                    <h3 className="text-xl font-bold text-gray-800 dark:text-white">Edit Reminder</h3>
+                    <h3 className="text-xl font-bold text-gray-800 dark:text-white">
+                        {isEditing ? 'Edit Reminder' : 'New Reminder'}
+                    </h3>
                     <button onClick={onCancel} className="p-2 bg-gray-100 dark:bg-gray-700 rounded-full text-gray-500 hover:text-gray-700 dark:hover:text-gray-200">
                         <X size={20} />
                     </button>
                 </div>
 
                 <div className="mb-6">
-                     <p className="text-sm font-bold text-[#E84C7C] mb-1">{config.category}</p>
-                     <h2 className="text-2xl font-bold text-gray-800 dark:text-white">{config.label}</h2>
+                     <p className="text-xs font-bold text-[#E84C7C] uppercase tracking-wider mb-2">
+                        {isEditing ? config.category : newCategory}
+                     </p>
+                     
+                     {isEditing ? (
+                         <h2 className="text-2xl font-bold text-gray-800 dark:text-white">{label}</h2>
+                     ) : (
+                         <div className="bg-gray-50 dark:bg-gray-900/50 p-3 rounded-xl border border-gray-100 dark:border-gray-700 focus-within:border-[#E84C7C] transition-colors">
+                             <input 
+                                type="text" 
+                                value={label}
+                                onChange={(e) => setLabel(e.target.value)}
+                                placeholder="Enter reminder name..."
+                                className="w-full bg-transparent text-xl font-bold text-gray-800 dark:text-white outline-none placeholder-gray-400"
+                                autoFocus
+                             />
+                         </div>
+                     )}
                 </div>
 
                 {/* Time Picker */}
@@ -162,9 +184,10 @@ const ReminderEditor = ({
 
                 <button 
                     onClick={handleSave}
-                    className="w-full py-4 bg-[#E84C7C] text-white rounded-xl font-bold shadow-lg shadow-pink-200 dark:shadow-pink-900/30 active:scale-95 transition-all flex items-center justify-center gap-2"
+                    disabled={!label.trim()}
+                    className="w-full py-4 bg-[#E84C7C] text-white rounded-xl font-bold shadow-lg shadow-pink-200 dark:shadow-pink-900/30 active:scale-95 transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:active:scale-100"
                 >
-                    <Check size={20} /> Save Changes
+                    <Check size={20} /> {isEditing ? 'Save Changes' : 'Create Reminder'}
                 </button>
             </div>
         </div>
@@ -187,7 +210,13 @@ const Settings: React.FC<SettingsProps> = ({
 }) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [view, setView] = useState<'MAIN' | 'REMINDERS'>('MAIN');
-  const [editingReminder, setEditingReminder] = useState<ReminderConfig | null>(null);
+  
+  // Modal State
+  const [modalConfig, setModalConfig] = useState<{
+      type: 'EDIT' | 'CREATE';
+      config?: ReminderConfig;
+      newCategory?: string;
+  } | null>(null);
   
   // Local state for reminders
   const [reminders, setReminders] = useState<ReminderConfig[]>(() => {
@@ -203,15 +232,29 @@ const Settings: React.FC<SettingsProps> = ({
       setReminders(prev => prev.map(r => r.id === id ? { ...r, isEnabled: !r.isEnabled } : r));
   };
 
-  const saveReminderChanges = (time: string, days: number[]) => {
-      if (editingReminder) {
-          setReminders(prev => prev.map(r => r.id === editingReminder.id ? { 
+  const handleSaveReminder = (label: string, time: string, days: number[]) => {
+      if (modalConfig?.type === 'EDIT' && modalConfig.config) {
+          // Edit Mode
+          setReminders(prev => prev.map(r => r.id === modalConfig.config!.id ? { 
               ...r, 
+              // Note: We don't update label in edit mode to preserve consistency with default IDs, 
+              // but for user-created ones we could. For simplicity, editing time/days is prioritized.
               time, 
               selectedDays: days 
           } : r));
-          setEditingReminder(null);
+      } else if (modalConfig?.type === 'CREATE' && modalConfig.newCategory) {
+          // Create Mode
+          const newReminder: ReminderConfig = {
+              id: Date.now().toString(),
+              label,
+              time,
+              isEnabled: true,
+              category: modalConfig.newCategory as any,
+              selectedDays: days
+          };
+          setReminders(prev => [...prev, newReminder]);
       }
+      setModalConfig(null);
   };
 
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -224,7 +267,6 @@ const Settings: React.FC<SettingsProps> = ({
   const formatDaysSummary = (days?: number[]) => {
       if (!days || days.length === 7) return 'Every day';
       if (days.length === 0) return 'Never';
-      // Sort and map
       const sorted = [...days].sort();
       return sorted.map(d => DAYS_OF_WEEK[d]).join(', ');
   };
@@ -238,14 +280,14 @@ const Settings: React.FC<SettingsProps> = ({
               <h2 className="text-2xl font-bold text-[#2D2D2D] dark:text-white">Reminders</h2>
           </div>
 
-          {['Period & fertility', 'Medicine', 'Lifestyle', 'Exercise'].map(category => (
+          {['Period & fertility', 'Medicine', 'Lifestyle', 'Yoga', 'Workout'].map(category => (
               <div key={category} className="mb-8">
                   <h3 className="text-lg font-medium text-gray-500 dark:text-gray-400 mb-3 px-1">{category}</h3>
                   <div className="bg-[#2D2D44] rounded-2xl overflow-hidden shadow-sm border border-gray-700/50">
                       {reminders.filter(r => r.category === category).map((reminder, idx, arr) => (
                           <div 
                             key={reminder.id} 
-                            onClick={() => setEditingReminder(reminder)}
+                            onClick={() => setModalConfig({ type: 'EDIT', config: reminder })}
                             className={`p-4 flex items-center justify-between cursor-pointer active:bg-white/5 transition-colors ${idx !== arr.length - 1 ? 'border-b border-gray-700' : ''}`}
                           >
                               <div className="flex-1 mr-4">
@@ -267,11 +309,14 @@ const Settings: React.FC<SettingsProps> = ({
                               </div>
                           </div>
                       ))}
-                      {/* Placeholder Add Button */}
-                      <div className="p-4 flex items-center justify-between border-t border-gray-700 bg-[#35354e]/50 hover:bg-[#35354e] transition-colors cursor-pointer">
+                      {/* Add Button */}
+                      <div 
+                        onClick={() => setModalConfig({ type: 'CREATE', newCategory: category })}
+                        className="p-4 flex items-center justify-between border-t border-gray-700 bg-[#35354e]/50 hover:bg-[#35354e] transition-colors cursor-pointer"
+                      >
                           <span className="text-gray-400 font-medium text-sm">Add new {category.toLowerCase()} reminder</span>
                           <div className="w-6 h-6 rounded-full bg-[#7B86CB]/20 text-[#7B86CB] flex items-center justify-center">
-                              <PlusIcon />
+                              <Plus size={14} />
                           </div>
                       </div>
                   </div>
@@ -283,12 +328,13 @@ const Settings: React.FC<SettingsProps> = ({
   return (
     <div className="flex flex-col h-full bg-[#FFF0F3] dark:bg-gray-900 overflow-y-auto no-scrollbar pb-32 transition-colors duration-300">
       
-      {/* Modal Overlay for Editing */}
-      {editingReminder && (
-          <ReminderEditor 
-            config={editingReminder} 
-            onSave={saveReminderChanges} 
-            onCancel={() => setEditingReminder(null)} 
+      {/* Modal Overlay for Editing/Creating */}
+      {modalConfig && (
+          <ReminderModal 
+            config={modalConfig.config}
+            newCategory={modalConfig.newCategory}
+            onSave={handleSaveReminder} 
+            onCancel={() => setModalConfig(null)} 
           />
       )}
 
@@ -487,12 +533,5 @@ const Settings: React.FC<SettingsProps> = ({
     </div>
   );
 };
-
-// Simple Icon helper
-const PlusIcon = () => (
-    <svg width="12" height="12" viewBox="0 0 12 12" fill="none" xmlns="http://www.w3.org/2000/svg">
-        <path d="M6 1V11M1 6H11" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-    </svg>
-);
 
 export default Settings;

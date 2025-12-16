@@ -1,29 +1,143 @@
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Design Tokens & Theme Variables */
+:root {
+  /* --- DARK THEME (DEFAULT) --- */
+  --nm-bg: #2E3238;
+  --nm-surface: #2E3238;
+  --nm-text: #E0E5EC;
+  --nm-text-muted: #88929C;
+  
+  --nm-primary: #E84C7C;
+  --nm-danger: #ef4444;
+  
+  /* Soft 3D Shadows (Dark Mode) */
+  /* Light source top-left */
+  --nm-shadow-out: 6px 6px 12px #22252a, -6px -6px 12px #3a3f46;
+  --nm-shadow-out-sm: 4px 4px 8px #22252a, -4px -4px 8px #3a3f46;
+  --nm-shadow-in: inset 4px 4px 8px #22252a, inset -4px -4px 8px #3a3f46;
+  --nm-shadow-in-sm: inset 2px 2px 4px #22252a, inset -2px -2px 4px #3a3f46;
+  
+  /* Shapes */
+  --nm-radius-lg: 1.5rem;
+  --nm-radius-md: 1rem;
+  --nm-radius-sm: 0.75rem;
+  --nm-radius-full: 9999px;
+  
+  /* Transitions */
+  --nm-ease: cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.light {
+  /* --- LIGHT THEME OVERRIDES --- */
+  --nm-bg: #E0E5EC;
+  --nm-surface: #E0E5EC;
+  --nm-text: #4A5568;
+  --nm-text-muted: #A0AEC0;
+  
+  --nm-primary: #E84C7C;
+  
+  /* Soft 3D Shadows (Light Mode) */
+  /* Using semi-transparent white/black for realistic blending */
+  --nm-shadow-out: 9px 9px 16px rgb(163,177,198,0.6), -9px -9px 16px rgba(255,255,255, 0.5);
+  --nm-shadow-out-sm: 5px 5px 10px rgb(163,177,198,0.6), -5px -5px 10px rgba(255,255,255, 0.5);
+  --nm-shadow-in: inset 6px 6px 12px rgb(163,177,198,0.6), inset -6px -6px 12px rgba(255,255,255, 0.8);
+  --nm-shadow-in-sm: inset 3px 3px 6px rgb(163,177,198,0.6), inset -3px -3px 6px rgba(255,255,255, 0.8);
+}
+
+/* Base Application */
 body {
   font-family: 'Quicksand', sans-serif;
-  background-color: #FFF0F3;
-  color: #2D2D2D;
+  background-color: var(--nm-bg);
+  color: var(--nm-text);
+  transition: background-color 0.3s var(--nm-ease), color 0.3s var(--nm-ease);
   overscroll-behavior: none;
-  transition: background-color 0.3s ease, color 0.3s ease;
 }
 
-body.dark {
-  background-color: #111827;
-  color: #F3F4F6;
+/* --- COMPONENT CLASSES --- */
+
+/* 1. Soft Surfaces (Cards, Containers) */
+.nm-card {
+  background-color: var(--nm-surface);
+  box-shadow: var(--nm-shadow-out);
+  border-radius: var(--nm-radius-lg);
+  border: 1px solid transparent; 
 }
 
-/* Custom Scrollbar hide */
-.no-scrollbar::-webkit-scrollbar {
-  display: none;
-}
-.no-scrollbar {
-  -ms-overflow-style: none;
-  scrollbar-width: none;
+/* 2. Soft Insets (Inputs, Tracks, Wells) */
+.nm-inset {
+  background-color: var(--nm-surface);
+  box-shadow: var(--nm-shadow-in);
+  border-radius: var(--nm-radius-md);
+  border: none;
 }
 
-/* Wheel Picker Simulation */
-.wheel-snap {
-  scroll-snap-type: y mandatory;
+/* 3. Soft Buttons */
+.nm-btn {
+  background-color: var(--nm-surface);
+  box-shadow: var(--nm-shadow-out-sm);
+  border-radius: var(--nm-radius-md);
+  color: var(--nm-text);
+  font-weight: 600;
+  border: none;
+  cursor: pointer;
+  transition: all 0.2s var(--nm-ease);
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
-.wheel-item {
-  scroll-snap-align: center;
+
+.nm-btn:active {
+  box-shadow: var(--nm-shadow-in-sm);
+  transform: translateY(1px);
 }
+
+.nm-btn-primary {
+  color: var(--nm-primary);
+}
+
+/* 4. Icon Buttons (Round) */
+.nm-icon-btn {
+  background-color: var(--nm-surface);
+  box-shadow: var(--nm-shadow-out-sm);
+  border-radius: 50%;
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s var(--nm-ease);
+  color: var(--nm-text-muted);
+}
+
+.nm-icon-btn:active, .nm-icon-btn.active {
+  box-shadow: var(--nm-shadow-in-sm);
+  color: var(--nm-primary);
+}
+
+/* 5. Floating Action Button */
+.nm-fab {
+  background-color: var(--nm-surface);
+  box-shadow: var(--nm-shadow-out);
+  border-radius: 50%;
+  color: var(--nm-primary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  cursor: pointer;
+}
+
+.nm-fab:active {
+  box-shadow: var(--nm-shadow-in);
+  transform: scale(0.95);
+}
+
+/* Utilities */
+.nm-text-primary { color: var(--nm-primary); }
+.nm-text-muted { color: var(--nm-text-muted); }
+
+/* Custom

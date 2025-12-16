@@ -39,7 +39,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onStartTracking }) => {
             onClick={onStartTracking}
             className="w-full py-4 bg-[#E84C7C] hover:bg-[#D63E6D] text-white rounded-2xl font-bold text-lg shadow-lg shadow-pink-300/50 dark:shadow-pink-900/20 flex items-center justify-center gap-2 transition-all active:scale-95"
           >
-            Start Tracking Free
+            Start Tracking
             <ArrowRight size={20} />
           </button>
           <button className="w-full py-4 bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-200 rounded-2xl font-bold text-lg shadow-sm border border-gray-100 dark:border-gray-700 transition-all hover:bg-gray-50 dark:hover:bg-gray-700 active:scale-95">

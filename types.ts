@@ -1,3 +1,4 @@
+
 export interface UserProfile {
   id: string;
   name: string;
@@ -64,7 +65,7 @@ export interface ReminderConfig {
   label: string;
   time: string; // "HH:mm"
   isEnabled: boolean;
-  category: 'Period & fertility' | 'Medicine' | 'Lifestyle' | 'Exercise';
+  category: 'Period & fertility' | 'Medicine' | 'Lifestyle' | 'Yoga' | 'Workout';
   selectedDays?: number[]; // 0=Sun, 1=Mon, ..., 6=Sat
 }
 

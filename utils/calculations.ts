@@ -23,6 +23,31 @@ export const calculateNormalizedBMI = (heightCm: number, weightKg: number): numb
 };
 
 /**
+ * Calculates Recommended Daily Water Intake.
+ * Formula: Body Weight (kg) * N
+ * N varies by age group.
+ */
+export const calculateWaterTarget = (age: number, weight: number): number => {
+  if (!age || !weight) return 2000;
+  
+  let n = 35; // Default for 18-30 or young adults
+  
+  if (age >= 18 && age <= 30) {
+    n = 35;
+  } else if (age >= 31 && age <= 55) {
+    n = 33;
+  } else if (age > 55) {
+    n = 30;
+  } else {
+    // Fallback for < 18, assuming similar needs to young adults for active growing bodies
+    n = 35;
+  }
+
+  // Calculate and round to nearest 50 for cleaner UI numbers
+  return Math.ceil((weight * n) / 50) * 50;
+};
+
+/**
  * Calculates PMS Risk Score based on research-based weights.
  * 
  * Formula:

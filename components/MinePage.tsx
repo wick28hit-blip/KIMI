@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { Droplet, Moon, Dumbbell, Sparkles, Plus, Play, Pause, RotateCcw, X, Clock, Flame, GlassWater, Minus, Sun, Check } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Droplet, Moon, Dumbbell, Sparkles, Plus, Play, Pause, RotateCcw, X, Clock, Flame, GlassWater, Minus, Sun, Check, Trophy } from 'lucide-react';
 import { DailyLog, UserProfile, YogaExercise } from '../types';
 import ScrollPicker from './ScrollPicker';
 
@@ -63,6 +63,7 @@ const MinePage: React.FC<MinePageProps> = ({ log, onSaveLog, user }) => {
   const [selectedYoga, setSelectedYoga] = useState<YogaExercise | null>(null);
   const [timerSeconds, setTimerSeconds] = useState(0);
   const [isTimerRunning, setIsTimerRunning] = useState(false);
+  const [showCompletion, setShowCompletion] = useState(false);
 
   // --- Water Logic ---
   const handleWaterAdd = (amount: number) => {
@@ -108,22 +109,49 @@ const MinePage: React.FC<MinePageProps> = ({ log, onSaveLog, user }) => {
   };
 
   // --- Timer Logic ---
-  React.useEffect(() => {
+  useEffect(() => {
     let interval: ReturnType<typeof setInterval>;
+    
     if (isTimerRunning && timerSeconds > 0) {
       interval = setInterval(() => {
         setTimerSeconds((prev) => prev - 1);
       }, 1000);
-    } else if (timerSeconds === 0) {
+    } else if (timerSeconds === 0 && isTimerRunning) {
+      // TIMER COMPLETED
       setIsTimerRunning(false);
+      handleYogaComplete();
     }
     return () => clearInterval(interval);
   }, [isTimerRunning, timerSeconds]);
+
+  const handleYogaComplete = () => {
+    if (!selectedYoga) return;
+    setShowCompletion(true);
+    
+    const durationMins = Math.ceil(selectedYoga.durationSeconds / 60);
+    const existingList = log.completedYogaExercises || [];
+    const newList = [...existingList, selectedYoga];
+    const newTotalDuration = (log.exerciseDuration || 0) + durationMins;
+
+    onSaveLog({
+        ...log,
+        didExercise: true,
+        exerciseType: 'Yoga', 
+        exerciseDuration: newTotalDuration,
+        completedYogaExercises: newList
+    });
+
+    setTimeout(() => {
+        setShowCompletion(false);
+        setSelectedYoga(null);
+    }, 2500);
+  };
 
   const openTimer = (exercise: YogaExercise) => {
     setSelectedYoga(exercise);
     setTimerSeconds(exercise.durationSeconds);
     setIsTimerRunning(false);
+    setShowCompletion(false);
   };
 
   const toggleTimer = () => setIsTimerRunning(!isTimerRunning);
@@ -287,73 +315,6 @@ const MinePage: React.FC<MinePageProps> = ({ log, onSaveLog, user }) => {
         </div>
       )}
 
-      {/* --- Gym Modal (Bottom Sheet) --- */}
-      {activeModal === 'GYM' && (
-        <div 
-          className="fixed inset-0 z-[60] flex items-end justify-center bg-black/60 backdrop-blur-sm animate-in fade-in"
-          onClick={() => setActiveModal('NONE')}
-        >
-           <div 
-            className="bg-white dark:bg-gray-800 w-full max-w-md rounded-t-[2.5rem] p-8 pb-12 animate-in slide-in-from-bottom duration-300 relative shadow-2xl"
-            onClick={e => e.stopPropagation()}
-          >
-             {/* Handle */}
-             <div className="absolute top-4 left-1/2 -translate-x-1/2 w-12 h-1.5 bg-gray-200 dark:bg-gray-700 rounded-full"></div>
-             
-             <div className="text-center mb-6">
-                 <h2 className="text-2xl font-bold text-gray-800 dark:text-white flex items-center justify-center gap-2">
-                     <Dumbbell className="text-orange-500" /> Workout Log
-                 </h2>
-             </div>
-
-             {/* Type Selector */}
-             <div className="mb-6">
-                <p className="text-center text-sm font-bold text-gray-400 mb-3 uppercase tracking-widest">Exercise Type</p>
-                <div className="flex flex-wrap justify-center gap-2">
-                    {EXERCISE_TYPES.map(type => (
-                        <button
-                            key={type}
-                            onClick={() => setExerciseType(type)}
-                            className={`px-4 py-2 rounded-xl border font-bold text-xs transition-all ${
-                                exerciseType === type 
-                                ? 'border-orange-500 bg-orange-50 dark:bg-orange-900/30 text-orange-600 dark:text-orange-400' 
-                                : 'border-gray-100 dark:border-gray-700 text-gray-500 hover:bg-gray-50 dark:hover:bg-gray-700'
-                            }`}
-                        >
-                            {type}
-                        </button>
-                    ))}
-                </div>
-             </div>
-
-             {/* Duration Picker */}
-             <div className="mb-8">
-                 <p className="text-center text-sm font-bold text-gray-400 mb-2 uppercase tracking-widest">Duration</p>
-                 <div className="flex justify-center items-center gap-2 h-32 bg-gray-50 dark:bg-gray-900/50 rounded-2xl relative overflow-hidden">
-                    <ScrollPicker 
-                        items={Array.from({length: 24}, (_, i) => (i + 1) * 5)} // 5 to 120 mins
-                        value={exerciseDuration}
-                        onChange={setExerciseDuration}
-                        height={128}
-                        itemHeight={40}
-                        formatLabel={(v) => `${v} min`}
-                        highlightClass="bg-orange-100 dark:bg-orange-900/30 rounded-lg"
-                        selectedItemClass="text-orange-500 font-bold text-xl scale-110"
-                    />
-                 </div>
-             </div>
-
-             <button 
-                onClick={saveExercise}
-                className="w-full py-4 bg-orange-500 hover:bg-orange-400 text-white rounded-xl font-bold shadow-lg shadow-orange-200 dark:shadow-orange-900/30 active:scale-95 transition-all flex items-center justify-center gap-2"
-             >
-                 <Check size={20} /> Log Workout
-             </button>
-          </div>
-        </div>
-      )}
-
-
       {/* --- Water Modal (Bottom Sheet) --- */}
       {activeModal === 'WATER' && (
         <div 
@@ -370,7 +331,7 @@ const MinePage: React.FC<MinePageProps> = ({ log, onSaveLog, user }) => {
                  <h2 className="text-2xl font-bold text-gray-800 dark:text-white flex items-center justify-center gap-2">
                      <Droplet className="text-blue-500 fill-blue-500" /> Hydration
                  </h2>
-                 <p className="text-sm text-gray-400 mt-1">Goal: {log.waterTarget} ml</p>
+                 <p className="text-sm text-gray-400 mt-1">Recommended: {log.waterTarget} ml</p>
              </div>
 
              <div className="flex justify-center mb-10">
@@ -392,7 +353,7 @@ const MinePage: React.FC<MinePageProps> = ({ log, onSaveLog, user }) => {
                  </div>
              </div>
 
-             <div className="grid grid-cols-3 gap-4 mb-4">
+             <div className="grid grid-cols-3 gap-4 mb-6">
                  {[
                      { label: 'Glass', amount: 250, icon: GlassWater },
                      { label: 'Bottle', amount: 500, icon: Droplet },
@@ -411,10 +372,17 @@ const MinePage: React.FC<MinePageProps> = ({ log, onSaveLog, user }) => {
              </div>
              
              <button 
-                onClick={() => handleWaterRemove(250)}
-                className="w-full py-3 flex items-center justify-center gap-2 text-gray-400 hover:text-red-400 transition-colors text-sm font-bold"
+                onClick={() => setActiveModal('NONE')}
+                className="w-full py-4 mb-3 bg-blue-500 hover:bg-blue-400 text-white rounded-xl font-bold shadow-lg shadow-blue-200 dark:shadow-blue-900/30 active:scale-95 transition-all flex items-center justify-center gap-2"
              >
-                 <Minus size={16} /> Mistake? Remove 250ml
+                 Save Hydration
+             </button>
+
+             <button 
+                onClick={() => handleWaterRemove(250)}
+                className="w-full flex items-center justify-center gap-2 text-gray-400 hover:text-red-400 transition-colors text-xs font-bold"
+             >
+                 <Minus size={14} /> Mistake? Remove 250ml
              </button>
           </div>
         </div>
@@ -633,86 +601,98 @@ const MinePage: React.FC<MinePageProps> = ({ log, onSaveLog, user }) => {
             </div>
 
             {/* Timer Display */}
-            <div className="flex justify-center mb-10">
-              <div className="relative w-64 h-64 flex items-center justify-center">
-                
-                {/* 3D Glowing Ring SVG */}
-                <svg className="w-full h-full rotate-[-90deg] drop-shadow-xl" viewBox="0 0 100 100">
-                   <defs>
-                     <linearGradient id="timerGradient" x1="0%" y1="0%" x2="100%" y2="0%">
-                       <stop offset="0%" stopColor="#E84C7C" />
-                       <stop offset="100%" stopColor="#F472B6" />
-                     </linearGradient>
-                     <filter id="glow" x="-50%" y="-50%" width="200%" height="200%">
-                       <feGaussianBlur stdDeviation="3" result="coloredBlur"/>
-                       <feMerge>
-                           <feMergeNode in="coloredBlur"/>
-                           <feMergeNode in="SourceGraphic"/>
-                       </feMerge>
-                     </filter>
-                   </defs>
-
-                   {/* Background Track */}
-                   <circle
-                     cx="50" cy="50" r="45"
-                     fill="none"
-                     stroke="#F3F4F6"
-                     strokeWidth="4"
-                     className="dark:stroke-gray-700"
-                   />
-
-                   {/* Active Progress Ring */}
-                   <circle
-                     cx="50" cy="50" r="45"
-                     fill="none"
-                     stroke="url(#timerGradient)"
-                     strokeWidth="6"
-                     strokeDasharray="283"
-                     strokeDashoffset={283 - (283 * (timerSeconds / selectedYoga.durationSeconds))}
-                     strokeLinecap="round"
-                     className="transition-all duration-1000 linear"
-                     filter="url(#glow)"
-                     style={{ opacity: timerSeconds > 0 ? 1 : 0.5 }}
-                   />
-                </svg>
-                
-                {/* Center Content */}
-                <div className="absolute inset-0 flex flex-col items-center justify-center">
-                  <div className="text-6xl font-bold text-[#2D2D2D] dark:text-white font-mono tracking-tighter tabular-nums">
-                    {formatTime(timerSeconds)}
-                  </div>
-                  {isTimerRunning ? (
-                    <span className="text-xs text-[#E84C7C] font-bold uppercase tracking-widest mt-2 animate-pulse">Focus</span>
-                  ) : (
-                    <span className="text-xs text-gray-400 font-bold uppercase tracking-widest mt-2">Paused</span>
-                  )}
+            {showCompletion ? (
+                <div className="flex flex-col items-center justify-center h-64 animate-in zoom-in duration-300">
+                    <div className="w-24 h-24 bg-green-100 rounded-full flex items-center justify-center text-green-500 mb-4 shadow-lg shadow-green-200">
+                        <Trophy size={48} fill="currentColor" />
+                    </div>
+                    <h3 className="text-2xl font-bold text-gray-800 dark:text-white">Well Done!</h3>
+                    <p className="text-gray-500 dark:text-gray-400 text-sm mt-1">Exercise logged successfully</p>
                 </div>
-              </div>
-            </div>
+            ) : (
+                <div className="flex justify-center mb-10">
+                <div className="relative w-64 h-64 flex items-center justify-center">
+                    
+                    {/* 3D Glowing Ring SVG */}
+                    <svg className="w-full h-full rotate-[-90deg] drop-shadow-xl" viewBox="0 0 100 100">
+                    <defs>
+                        <linearGradient id="timerGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+                        <stop offset="0%" stopColor="#E84C7C" />
+                        <stop offset="100%" stopColor="#F472B6" />
+                        </linearGradient>
+                        <filter id="glow" x="-50%" y="-50%" width="200%" height="200%">
+                        <feGaussianBlur stdDeviation="3" result="coloredBlur"/>
+                        <feMerge>
+                            <feMergeNode in="coloredBlur"/>
+                            <feMergeNode in="SourceGraphic"/>
+                        </feMerge>
+                        </filter>
+                    </defs>
+
+                    {/* Background Track */}
+                    <circle
+                        cx="50" cy="50" r="45"
+                        fill="none"
+                        stroke="#F3F4F6"
+                        strokeWidth="4"
+                        className="dark:stroke-gray-700"
+                    />
+
+                    {/* Active Progress Ring */}
+                    <circle
+                        cx="50" cy="50" r="45"
+                        fill="none"
+                        stroke="url(#timerGradient)"
+                        strokeWidth="6"
+                        strokeDasharray="283"
+                        strokeDashoffset={283 - (283 * (timerSeconds / selectedYoga.durationSeconds))}
+                        strokeLinecap="round"
+                        className="transition-all duration-1000 linear"
+                        filter="url(#glow)"
+                        style={{ opacity: timerSeconds > 0 ? 1 : 0.5 }}
+                    />
+                    </svg>
+                    
+                    {/* Center Content */}
+                    <div className="absolute inset-0 flex flex-col items-center justify-center">
+                    <div className="text-6xl font-bold text-[#2D2D2D] dark:text-white font-mono tracking-tighter tabular-nums">
+                        {formatTime(timerSeconds)}
+                    </div>
+                    {isTimerRunning ? (
+                        <span className="text-xs text-[#E84C7C] font-bold uppercase tracking-widest mt-2 animate-pulse">Focus</span>
+                    ) : (
+                        <span className="text-xs text-gray-400 font-bold uppercase tracking-widest mt-2">Paused</span>
+                    )}
+                    </div>
+                </div>
+                </div>
+            )}
 
             {/* Controls */}
-            <div className="flex items-center justify-center gap-8">
-              <button 
-                onClick={resetTimer}
-                className="p-4 rounded-full bg-gray-50 dark:bg-gray-700/50 text-gray-400 hover:text-gray-600 hover:bg-gray-100 dark:hover:bg-gray-600 transition-all active:scale-95"
-              >
-                <RotateCcw size={22} />
-              </button>
+            {!showCompletion && (
+                <div className="flex items-center justify-center gap-8">
+                <button 
+                    onClick={resetTimer}
+                    className="p-4 rounded-full bg-gray-50 dark:bg-gray-700/50 text-gray-400 hover:text-gray-600 hover:bg-gray-100 dark:hover:bg-gray-600 transition-all active:scale-95"
+                >
+                    <RotateCcw size={22} />
+                </button>
 
-              <button 
-                onClick={toggleTimer}
-                className="w-20 h-20 rounded-full bg-gradient-to-br from-[#E84C7C] to-[#D63E6D] text-white flex items-center justify-center shadow-lg shadow-pink-300/50 dark:shadow-pink-900/30 active:scale-95 transition-all hover:scale-105"
-              >
-                {isTimerRunning ? <Pause size={32} fill="currentColor" /> : <Play size={32} fill="currentColor" className="ml-1" />}
-              </button>
+                <button 
+                    onClick={toggleTimer}
+                    className="w-20 h-20 rounded-full bg-gradient-to-br from-[#E84C7C] to-[#D63E6D] text-white flex items-center justify-center shadow-lg shadow-pink-300/50 dark:shadow-pink-900/30 active:scale-95 transition-all hover:scale-105"
+                >
+                    {isTimerRunning ? <Pause size={32} fill="currentColor" /> : <Play size={32} fill="currentColor" className="ml-1" />}
+                </button>
 
-              <button 
-                onClick={() => { setSelectedYoga(null); setIsTimerRunning(false); }}
-                className="p-4 rounded-full bg-gray-50 dark:bg-gray-700/50 text-gray-400 hover:text-gray-600 hover:bg-gray-100 dark:hover:bg-gray-600 transition-all active:scale-95"
-              >
-                <X size={22} />
-              </button>
-            </div>
+                <button 
+                    onClick={() => { setSelectedYoga(null); setIsTimerRunning(false); }}
+                    className="p-4 rounded-full bg-gray-50 dark:bg-gray-700/50 text-gray-400 hover:text-gray-600 hover:bg-gray-100 dark:hover:bg-gray-600 transition-all active:scale-95"
+                >
+                    <X size={22} />
+                </button>
+                </div>
+            )}
 
           </div>
         </div>
