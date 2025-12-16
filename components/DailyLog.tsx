@@ -62,55 +62,58 @@ const DailyLog: React.FC<DailyLogProps> = ({ log, onSave, onClose }) => {
   };
 
   return (
-    <div className="flex flex-col h-full bg-[#FFF0F3] dark:bg-gray-900 overflow-hidden relative transition-colors duration-300">
+    <div className="flex flex-col h-full overflow-hidden relative">
       {/* Header */}
       <div className="px-6 pt-6 pb-2 flex items-center justify-between shrink-0">
         <div className="flex items-center gap-3">
-            <button onClick={onClose} className="p-2 rounded-full hover:bg-black/5 dark:hover:bg-white/10">
-                <ArrowLeft size={20} className="text-[#2D2D2D] dark:text-white" />
+            <button onClick={onClose} className="nm-icon-btn w-10 h-10 text-[var(--nm-text)]">
+                <ArrowLeft size={20} />
             </button>
             <div>
-                <h2 className="text-2xl font-bold text-[#2D2D2D] dark:text-white leading-none">
+                <h2 className="text-2xl font-bold text-[var(--nm-text)] leading-none">
                     Daily Log
                 </h2>
-                <span className="text-gray-400 text-sm font-medium">{format(new Date(log.date), 'MMM d')}</span>
+                <span className="text-[var(--nm-text-muted)] text-sm font-medium">{format(new Date(log.date), 'MMM d')}</span>
             </div>
         </div>
-        <button onClick={onClose} className="text-[#E84C7C]"><Check size={24} /></button>
+        <button onClick={onClose} className="nm-icon-btn w-10 h-10 text-[var(--nm-primary)] shadow-none active:shadow-inner"><Check size={24} /></button>
       </div>
 
       {/* Content */}
       <div className="flex-1 overflow-y-auto no-scrollbar p-6 pb-32">
         
         {/* Mood Section */}
-        <div className="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-sm mb-6 border border-pink-50 dark:border-gray-700">
-            <h3 className="font-bold text-gray-800 dark:text-white mb-4 flex items-center gap-2">
-                <Smile size={18} className="text-[#E84C7C]" />
+        <div className="nm-card p-6 mb-6">
+            <h3 className="font-bold text-[var(--nm-text)] mb-4 flex items-center gap-2">
+                <Smile size={18} className="text-[var(--nm-primary)]" />
                 How are you feeling?
             </h3>
-            <div className="flex flex-wrap gap-2">
-                {['Happy', 'Sad', 'Anxious', 'Calm', 'Tired', 'Energetic', 'Frustrated', 'Relaxed'].map(m => (
-                    <button
-                        key={m}
-                        onClick={() => {
-                            const moods = log.mood || [];
-                            const newMoods = moods.includes(m) ? moods.filter(x => x !== m) : [...moods, m];
-                            updateLog({ mood: newMoods });
-                        }}
-                        className={`px-4 py-2 rounded-full text-sm border transition-all ${
-                            (log.mood || []).includes(m)
-                            ? 'bg-orange-100 text-orange-600 border-orange-200'
-                            : 'bg-gray-50 text-gray-500 border-transparent hover:bg-gray-100'
-                        }`}
-                    >
-                        {m}
-                    </button>
-                ))}
+            <div className="flex flex-wrap gap-3">
+                {['Happy', 'Sad', 'Anxious', 'Calm', 'Tired', 'Energetic', 'Frustrated', 'Relaxed'].map(m => {
+                    const isSelected = (log.mood || []).includes(m);
+                    return (
+                      <button
+                          key={m}
+                          onClick={() => {
+                              const moods = log.mood || [];
+                              const newMoods = moods.includes(m) ? moods.filter(x => x !== m) : [...moods, m];
+                              updateLog({ mood: newMoods });
+                          }}
+                          className={`px-4 py-2 rounded-full text-sm font-medium transition-all ${
+                              isSelected
+                              ? 'nm-inset text-[var(--nm-primary)]'
+                              : 'nm-btn text-[var(--nm-text-muted)]'
+                          }`}
+                      >
+                          {m}
+                      </button>
+                    );
+                })}
             </div>
         </div>
 
         {/* Symptoms Accordion */}
-        <h3 className="font-bold text-gray-800 dark:text-white mb-4 px-1">Symptoms</h3>
+        <h3 className="font-bold text-[var(--nm-text)] mb-4 px-1">Symptoms</h3>
         <div className="space-y-3 animate-in fade-in slide-in-from-bottom-4 duration-300">
             {Object.entries(SYMPTOM_CATEGORIES).map(([category, items]) => {
                 const isExpanded = expandedCategory === category;
@@ -118,38 +121,38 @@ const DailyLog: React.FC<DailyLogProps> = ({ log, onSave, onClose }) => {
                 const activeCount = log.detailedSymptoms?.filter(s => s.category === category).length || 0;
 
                 return (
-                    <div key={category} className="bg-white dark:bg-gray-800 rounded-xl overflow-hidden border border-pink-100 dark:border-gray-700 shadow-sm transition-colors">
+                    <div key={category} className="nm-card overflow-hidden">
                         <button 
                             onClick={() => setExpandedCategory(isExpanded ? null : category)}
-                            className="w-full p-4 flex items-center justify-between text-gray-800 dark:text-white"
+                            className="w-full p-4 flex items-center justify-between text-[var(--nm-text)]"
                         >
                             <div className="flex items-center gap-3">
-                                <Icon size={18} className="text-gray-500 dark:text-gray-400" />
+                                <Icon size={18} className="text-[var(--nm-text-muted)]" />
                                 <span className="font-medium">{category}</span>
                                 {activeCount > 0 && (
-                                    <span className="bg-[#E84C7C] text-white text-[10px] px-2 py-0.5 rounded-full font-bold">{activeCount}</span>
+                                    <span className="bg-[var(--nm-primary)] text-white text-[10px] px-2 py-0.5 rounded-full font-bold">{activeCount}</span>
                                 )}
                             </div>
-                            {isExpanded ? <ChevronUp size={16} className="text-gray-400" /> : <ChevronDown size={16} className="text-gray-400" />}
+                            {isExpanded ? <ChevronUp size={16} className="text-[var(--nm-text-muted)]" /> : <ChevronDown size={16} className="text-[var(--nm-text-muted)]" />}
                         </button>
                         
                         {isExpanded && (
-                            <div className="bg-gray-50 dark:bg-gray-900/30 p-2 space-y-1 border-t border-gray-100 dark:border-gray-700">
+                            <div className="p-2 space-y-1 bg-[var(--nm-bg)]/50 border-t border-[rgba(255,255,255,0.4)]">
                                 {items.map(item => {
                                     const intensity = getIntensity(item);
                                     return (
-                                        <div key={item} className="flex items-center justify-between p-3 rounded-lg hover:bg-white dark:hover:bg-white/5 transition-colors">
-                                            <span className="text-sm text-gray-700 dark:text-gray-300 font-medium">{item}</span>
+                                        <div key={item} className="flex items-center justify-between p-3 rounded-lg hover:bg-[var(--nm-surface)] transition-colors">
+                                            <span className="text-sm text-[var(--nm-text)] font-medium">{item}</span>
                                             <div className="flex gap-1">
                                                 {[1, 2, 3, 4].map(star => (
                                                     <button 
                                                         key={star}
                                                         onClick={() => handleSymptomChange(category, item, intensity === star ? 0 : star)}
-                                                        className="focus:outline-none"
+                                                        className="focus:outline-none transition-transform active:scale-90"
                                                     >
                                                         <Star 
-                                                            size={16} 
-                                                            className={star <= intensity ? "text-[#E84C7C] fill-[#E84C7C]" : "text-gray-300 dark:text-gray-600"} 
+                                                            size={18} 
+                                                            className={star <= intensity ? "text-[var(--nm-primary)] fill-[var(--nm-primary)] drop-shadow-sm" : "text-[var(--nm-text-muted)] opacity-30"} 
                                                         />
                                                     </button>
                                                 ))}

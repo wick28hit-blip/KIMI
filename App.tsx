@@ -9,11 +9,12 @@ import Settings from './components/Settings';
 import MinePage from './components/MinePage';
 import SplashScreen from './components/SplashScreen';
 import DailyLogView from './components/DailyLog';
+import Insights from './components/Insights'; // NEW IMPORT
 import { Home, Calendar, PlusCircle, BarChart2, Settings as SettingsIcon, Plus, User } from 'lucide-react';
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, isToday, addMonths, subMonths } from 'date-fns';
 import { getDayStatus, calculateWaterTarget } from './utils/calculations';
 
-// Notification Logic (Imports from root utils)
+// Notification Logic
 import { syncProfileToIDB, getLastNotification, logNotificationSent } from './utils/db';
 import { triggerLocalNotification, checkPeriodicNotifications, checkMoodTrigger } from './utils/scheduler';
 
@@ -22,13 +23,13 @@ const USER_KEY_PREFIX = 'KIMI_USER_';
 const LOGS_KEY_PREFIX = 'KIMI_LOGS_';
 const LEGACY_PROFILE_KEY_PREFIX = 'KIMI_PROFILE_';
 
-interface StoredIndexData {
-  activeProfileId?: string;
-  profileIds?: string[];
-  user?: UserProfile;
-  cycle?: CycleData;
-  logs?: Record<string, DailyLog>;
-  version?: number;
+// Interface for imported backup data
+interface BackupData {
+    profiles?: Record<string, ProfileData>;
+    activeProfileId?: string;
+    user?: UserProfile;
+    cycle?: CycleData;
+    logs?: Record<string, DailyLog>;
 }
 
 export default function App() {
@@ -39,7 +40,7 @@ export default function App() {
     logs: {},
     profiles: {},
     activeProfileId: null,
-    darkMode: true // Neumorphism Default: Dark Mode
+    darkMode: false // Disabled for new single-theme system
   });
 
   const [currentDate, setCurrentDate] = useState(new Date());
@@ -88,15 +89,6 @@ export default function App() {
     }
   }, [state.user, state.cycle, state.logs, state.activeProfileId]);
 
-  // Theme Handling (Class Injection for CSS Variables)
-  useEffect(() => {
-    if (!state.darkMode) {
-        document.body.classList.add('light');
-    } else {
-        document.body.classList.remove('light');
-    }
-  }, [state.darkMode]);
-
   // Navigation Handling
   useEffect(() => {
     const handlePopState = (event: PopStateEvent) => {
@@ -114,7 +106,7 @@ export default function App() {
     return () => window.removeEventListener('popstate', handlePopState);
   }, [state.view]);
 
-  const toggleDarkMode = () => setState(s => ({ ...s, darkMode: !s.darkMode }));
+  // Removed toggleDarkMode function as we are enforcing single theme
 
   const handleSplashComplete = () => {
     const hasAccount = localStorage.getItem(HAS_ACCOUNT_KEY);
@@ -224,7 +216,7 @@ export default function App() {
     Object.keys(localStorage).forEach(key => {
         if (key.startsWith(USER_KEY_PREFIX) || key.startsWith(LOGS_KEY_PREFIX) || key.startsWith(LEGACY_PROFILE_KEY_PREFIX)) localStorage.removeItem(key);
     });
-    setState({ view: 'LANDING', user: null, cycle: null, logs: {}, profiles: {}, activeProfileId: null, darkMode: state.darkMode });
+    setState({ view: 'LANDING', user: null, cycle: null, logs: {}, profiles: {}, activeProfileId: null, darkMode: false });
   };
 
   const handleCreateProfile = (user: UserProfile, cycle: CycleData, initialLogs: Record<string, DailyLog> = {}) => {
@@ -308,29 +300,56 @@ export default function App() {
     reader.onload = (e) => {
       try {
         const raw = JSON.parse(e.target?.result as string);
-        const data = raw as {
-          profiles?: Record<string, ProfileData>;
-          activeProfileId?: string;
-          user?: UserProfile;
-          cycle?: CycleData;
-          logs?: Record<string, DailyLog>;
-        };
+        // Cast to any first, then to BackupData to avoid 'unknown' errors
+        const data = raw as any as BackupData;
 
         if (!data) return;
         let importedProfiles: Record<string, ProfileData> = {};
         let activeId = '';
-        if (data.profiles) { importedProfiles = data.profiles; activeId = data.activeProfileId || ''; }
-        else if (data.user && data.cycle) {
+        
+        if (data.profiles) { 
+            importedProfiles = data.profiles; 
+            activeId = data.activeProfileId || ''; 
+        } else if (data.user && data.cycle) {
              const uid = data.user.id || 'imported_user';
              importedProfiles = { [uid]: { user: { ...data.user, id: uid }, cycle: data.cycle, logs: data.logs || {} } };
              activeId = uid;
         }
+
         if (Object.keys(importedProfiles).length > 0) {
-            const primary = Object.values(importedProfiles).find((p: ProfileData) => p.user?.relationship === 'Self');
+            // Explicitly cast to array of ProfileData to fix 'unknown' type errors
+            const profilesArray = Object.values(importedProfiles) as any as ProfileData[];
+            const primary = profilesArray.find((p) => p.user?.relationship === 'Self');
+            
             persistAllProfiles(importedProfiles, activeId, primary?.user?.pin || '0000');
-            const activeData = importedProfiles[activeId];
-            setState(s => ({ ...s, view: 'HOME', profiles: importedProfiles, activeProfileId: activeId, user: activeData?.user || null, cycle: activeData?.cycle || null, logs: activeData?.logs || {} }));
-            alert('Data imported successfully!');
+            
+            const activeData = importedProfiles[activeId] as ProfileData | undefined;
+            if (activeData) {
+                setState(s => ({ 
+                    ...s, 
+                    view: 'HOME', 
+                    profiles: importedProfiles, 
+                    activeProfileId: activeId, 
+                    user: activeData.user, 
+                    cycle: activeData.cycle, 
+                    logs: activeData.logs || {} 
+                }));
+                alert('Data imported successfully!');
+            } else {
+                 // Fallback if activeId is invalid
+                 const firstId = Object.keys(importedProfiles)[0];
+                 const firstData = importedProfiles[firstId] as ProfileData;
+                 setState(s => ({ 
+                    ...s, 
+                    view: 'HOME', 
+                    profiles: importedProfiles, 
+                    activeProfileId: firstId, 
+                    user: firstData.user, 
+                    cycle: firstData.cycle, 
+                    logs: firstData.logs || {} 
+                }));
+                alert('Data imported successfully!');
+            }
         } else alert('Invalid file format.');
       } catch (err) { console.error(err); alert('Failed to import data.'); }
     };
@@ -352,10 +371,10 @@ export default function App() {
 
     return (
       <div className="p-4 pt-10 h-full overflow-y-auto pb-32">
-        <div className="flex justify-between items-center mb-6">
-           <button onClick={() => setCurrentDate(subMonths(currentDate, 1))} className="nm-icon-btn w-10 h-10 font-bold">&lt;</button>
+        <div className="flex justify-between items-center mb-6 px-2">
+           <button onClick={() => setCurrentDate(subMonths(currentDate, 1))} className="nm-icon-btn w-10 h-10 font-bold text-[var(--nm-text)]">&lt;</button>
            <h2 className="text-xl font-bold text-[var(--nm-text)]">{format(currentDate, 'MMMM yyyy')}</h2>
-           <button onClick={() => setCurrentDate(addMonths(currentDate, 1))} className="nm-icon-btn w-10 h-10 font-bold">&gt;</button>
+           <button onClick={() => setCurrentDate(addMonths(currentDate, 1))} className="nm-icon-btn w-10 h-10 font-bold text-[var(--nm-text)]">&gt;</button>
         </div>
 
         <div className="grid grid-cols-7 gap-2 mb-2">
@@ -368,7 +387,7 @@ export default function App() {
              if (state.logs[format(day, 'yyyy-MM-dd')]?.flow) status = 'period_past';
 
              // Custom neumorphic states for calendar days
-             let dayClass = 'nm-btn bg-transparent shadow-none'; // Default flat
+             let dayClass = 'nm-btn bg-transparent shadow-none border-none'; // Default flat
              let textClass = 'text-[var(--nm-text)]';
              
              if (status === 'period') { dayClass = 'nm-inset !shadow-[var(--nm-shadow-in-sm)] text-[#E84C7C] font-bold'; }
@@ -446,17 +465,14 @@ export default function App() {
       return <MinePage log={log} onSaveLog={saveLog} user={state.user} />;
   };
 
-  const renderInsights = () => {
-      return <div className="p-6 text-[var(--nm-text)]">Insights coming soon</div>;
-  };
-
   return (
     <div className={`max-w-md mx-auto bg-[var(--nm-bg)] h-[100dvh] relative shadow-2xl overflow-hidden flex flex-col`}>
       <main className="flex-1 overflow-hidden relative">
         {state.view === 'HOME' && renderHome()}
         {state.view === 'CALENDAR' && renderCalendar()}
         {state.view === 'DAILY_LOG' && renderDailyLog()}
-        {state.view === 'INSIGHTS' && renderInsights()}
+        {/* Updated Insights Renderer */}
+        {state.view === 'INSIGHTS' && <Insights logs={state.logs} cycle={state.cycle} user={state.user} />}
         {state.view === 'MINE' && renderMine()}
         {state.view === 'LANDING' && <LandingPage onStartTracking={() => setState(s => ({...s, view: 'ONBOARDING'}))} />}
         {state.view === 'ONBOARDING' && <Onboarding onComplete={handleCreateProfile} isAddingProfile={Object.keys(state.profiles).length > 0} onCancel={() => setState(s => ({...s, view: 'HOME'}))} />}
@@ -468,8 +484,8 @@ export default function App() {
                 onExport={handleExportData}
                 onImport={handleImportData}
                 onDeleteData={() => setShowDeleteModal(true)}
-                isDarkMode={state.darkMode}
-                onToggleDarkMode={toggleDarkMode}
+                isDarkMode={false}
+                onToggleDarkMode={() => {}}
                 onLogout={handleLogout}
                 onAddProfile={() => setState(s => ({ ...s, view: 'ONBOARDING' }))}
                 onTestNotification={handleTestNotification}
@@ -485,8 +501,8 @@ export default function App() {
             {[{view: 'HOME', icon: Home, label: 'Home'}, {view: 'CALENDAR', icon: Calendar, label: 'Calendar'}, {view: 'INSIGHTS', icon: BarChart2, label: 'Insights'}, {view: 'MINE', icon: User, label: 'Mine'}].map(item => (
                 <React.Fragment key={item.view}>
                     {item.view === 'INSIGHTS' && <div className="w-16" />}
-                    <button onClick={() => setState(s => ({...s, view: item.view as any}))} className={`flex-1 flex flex-col items-center gap-1 ${state.view === item.view ? 'text-[#E84C7C]' : 'text-[var(--nm-text-muted)]'}`}>
-                        <item.icon size={22} className={state.view === item.view ? 'drop-shadow-[0_0_5px_rgba(232,76,124,0.5)]' : ''} />
+                    <button onClick={() => setState(s => ({...s, view: item.view as any}))} className={`flex-1 flex flex-col items-center gap-1 transition-colors ${state.view === item.view ? 'text-[var(--nm-primary)]' : 'text-[var(--nm-text-muted)]'}`}>
+                        <item.icon size={22} className={state.view === item.view ? 'drop-shadow-sm' : ''} />
                         <span className="text-[10px] font-medium">{item.label}</span>
                     </button>
                 </React.Fragment>

@@ -5,21 +5,45 @@
 
 /* Design Tokens & Theme Variables */
 :root {
-  /* --- DARK THEME (DEFAULT) --- */
-  --nm-bg: #2E3238;
-  --nm-surface: #2E3238;
-  --nm-text: #E0E5EC;
-  --nm-text-muted: #88929C;
+  /* --- REQUESTED PALETTE (Single Theme) --- */
   
-  --nm-primary: #E84C7C;
+  /* Background #FFEFF3 */
+  --nm-bg: #FFEFF3;
+  
+  /* Surface (cards, buttons, panels) #F9E6EC */
+  --nm-surface: #F9E6EC;
+  
+  /* Text Primary #6F5A63 */
+  --nm-text: #6F5A63;
+  
+  /* Text Secondary #9A7F89 */
+  --nm-text-muted: #9A7F89;
+  
+  /* Primary Accent #D9467A */
+  --nm-primary: #D9467A;
+  
+  /* Secondary/Danger */
   --nm-danger: #ef4444;
   
-  /* Soft 3D Shadows (Dark Mode) */
-  /* Light source top-left */
-  --nm-shadow-out: 6px 6px 12px #22252a, -6px -6px 12px #3a3f46;
-  --nm-shadow-out-sm: 4px 4px 8px #22252a, -4px -4px 8px #3a3f46;
-  --nm-shadow-in: inset 4px 4px 8px #22252a, inset -4px -4px 8px #3a3f46;
-  --nm-shadow-in-sm: inset 2px 2px 4px #22252a, inset -2px -2px 4px #3a3f46;
+  /* --- SOFT 3D SHADOWS --- */
+  /* Top-left highlight: rgba(255,255,255,0.9) */
+  /* Bottom-right shadow: rgba(201,160,174,0.35) */
+  
+  --nm-shadow-out: 
+    6px 6px 12px rgba(201,160,174,0.35), 
+    -6px -6px 12px rgba(255,255,255,0.9);
+    
+  --nm-shadow-out-sm: 
+    3px 3px 6px rgba(201,160,174,0.35), 
+    -3px -3px 6px rgba(255,255,255,0.9);
+    
+  --nm-shadow-in: 
+    inset 4px 4px 8px rgba(201,160,174,0.35), 
+    inset -4px -4px 8px rgba(255,255,255,0.9);
+    
+  --nm-shadow-in-sm: 
+    inset 2px 2px 4px rgba(201,160,174,0.35), 
+    inset -2px -2px 4px rgba(255,255,255,0.9);
   
   /* Shapes */
   --nm-radius-lg: 1.5rem;
@@ -31,24 +55,7 @@
   --nm-ease: cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-.light {
-  /* --- LIGHT THEME OVERRIDES --- */
-  --nm-bg: #E0E5EC;
-  --nm-surface: #E0E5EC;
-  --nm-text: #4A5568;
-  --nm-text-muted: #A0AEC0;
-  
-  --nm-primary: #E84C7C;
-  
-  /* Soft 3D Shadows (Light Mode) */
-  /* Using semi-transparent white/black for realistic blending */
-  --nm-shadow-out: 9px 9px 16px rgb(163,177,198,0.6), -9px -9px 16px rgba(255,255,255, 0.5);
-  --nm-shadow-out-sm: 5px 5px 10px rgb(163,177,198,0.6), -5px -5px 10px rgba(255,255,255, 0.5);
-  --nm-shadow-in: inset 6px 6px 12px rgb(163,177,198,0.6), inset -6px -6px 12px rgba(255,255,255, 0.8);
-  --nm-shadow-in-sm: inset 3px 3px 6px rgb(163,177,198,0.6), inset -3px -3px 6px rgba(255,255,255, 0.8);
-}
-
-/* Base Application */
+/* Ensure body uses the variables */
 body {
   font-family: 'Quicksand', sans-serif;
   background-color: var(--nm-bg);
@@ -64,7 +71,7 @@ body {
   background-color: var(--nm-surface);
   box-shadow: var(--nm-shadow-out);
   border-radius: var(--nm-radius-lg);
-  border: 1px solid transparent; 
+  border: 1px solid rgba(255, 255, 255, 0.4); /* Subtle border for definition */
 }
 
 /* 2. Soft Insets (Inputs, Tracks, Wells) */
@@ -82,7 +89,7 @@ body {
   border-radius: var(--nm-radius-md);
   color: var(--nm-text);
   font-weight: 600;
-  border: none;
+  border: 1px solid rgba(255, 255, 255, 0.4);
   cursor: pointer;
   transition: all 0.2s var(--nm-ease);
   display: flex;
@@ -96,7 +103,14 @@ body {
 }
 
 .nm-btn-primary {
-  color: var(--nm-primary);
+  background-color: var(--nm-primary);
+  color: white;
+  box-shadow: 
+    6px 6px 12px rgba(217, 70, 122, 0.4), 
+    -6px -6px 12px rgba(255, 255, 255, 0.9);
+}
+.nm-btn-primary:active {
+  box-shadow: inset 3px 3px 6px rgba(0,0,0,0.2);
 }
 
 /* 4. Icon Buttons (Round) */
@@ -104,7 +118,7 @@ body {
   background-color: var(--nm-surface);
   box-shadow: var(--nm-shadow-out-sm);
   border-radius: 50%;
-  border: none;
+  border: 1px solid rgba(255, 255, 255, 0.4);
   cursor: pointer;
   display: flex;
   align-items: center;
@@ -127,7 +141,7 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
-  border: none;
+  border: 1px solid rgba(255, 255, 255, 0.5);
   cursor: pointer;
 }
 
@@ -136,8 +150,16 @@ body {
   transform: scale(0.95);
 }
 
-/* Utilities */
-.nm-text-primary { color: var(--nm-primary); }
-.nm-text-muted { color: var(--nm-text-muted); }
+/* Scrollbar hiding */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
 
-/* Custom
+/* Utilities */
+.text-primary { color: var(--nm-primary); }
+.text-main { color: var(--nm-text); }
+.text-muted { color: var(--nm-text-muted); }
