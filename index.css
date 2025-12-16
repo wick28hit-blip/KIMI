@@ -2,16 +2,24 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ===============================
+   DESIGN TOKENS
+   =============================== */
+
 :root {
-  --bg-color: #FFF0F3;
-  --neu-shadow-light: #ffffff;
-  --neu-shadow-dark: #eecdd6;
   --primary-pink: #E84C7C;
+
+  /* Soft 3D shadow tones */
+  --shadow-light: rgba(255, 255, 255, 0.85);
+  --shadow-dark: rgba(201, 160, 174, 0.32);
 }
+
+/* ===============================
+   BASE STYLES
+   =============================== */
 
 body {
   font-family: 'Quicksand', sans-serif;
-  /* Monochromatic pink gradient with tonal separation */
   background: linear-gradient(145deg, #FFF4F7 0%, #F4D6DF 100%);
   color: #5D5D5D;
   min-height: 100vh;
@@ -23,113 +31,85 @@ body.dark {
   color: #F3F4F6;
 }
 
-/* --- NEUMORPHIC UTILITIES --- */
+/* ===============================
+   SOFT 3D NEUMORPHIC UTILITIES
+   (TAILWIND + VERCEL SAFE)
+   =============================== */
 
-/* Standard protruding card */
-.neu-flat {
-  background: #FFF0F3;
-  box-shadow: 10px 10px 20px var(--neu-shadow-dark), -10px -10px 20px var(--neu-shadow-light);
-  border-radius: 1.5rem;
-  border: 1px solid rgba(255,255,255,0.4);
+@layer utilities {
+
+  /* Raised Card / Surface */
+  .neu-flat {
+    background: linear-gradient(145deg, #FFF4F7 0%, #F4D6DF 100%);
+    border-radius: 1.5rem;
+    box-shadow:
+      0px 4px 10px var(--shadow-dark),
+      0px -2px 6px var(--shadow-light);
+  }
+
+  /* Inset / Input / Selected */
+  .neu-pressed {
+    background: linear-gradient(145deg, #F4D6DF 0%, #FFF4F7 100%);
+    border-radius: 1rem;
+    box-shadow:
+      inset 0px 3px 6px var(--shadow-dark),
+      inset 0px -2px 4px var(--shadow-light);
+  }
+
+  /* Primary Rectangular Button */
+  .neu-btn {
+    background: linear-gradient(145deg, #FFF4F7 0%, #F4D6DF 100%);
+    border-radius: 1rem;
+    font-weight: 700;
+    color: var(--primary-pink);
+    box-shadow:
+      0px 6px 14px var(--shadow-dark),
+      0px -3px 8px var(--shadow-light);
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+  }
+
+  .neu-btn:active {
+    transform: translateY(1px);
+    box-shadow:
+      inset 0px 3px 6px var(--shadow-dark),
+      inset 0px -2px 4px var(--shadow-light);
+  }
+
+  /* Circular Icon Button */
+  .neu-btn-round {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 9999px;
+    background: linear-gradient(145deg, #FFF4F7 0%, #F4D6DF 100%);
+    color: #5D5D5D;
+    box-shadow:
+      0px 5px 12px var(--shadow-dark),
+      0px -2px 6px var(--shadow-light);
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+  }
+
+  .neu-btn-round:active {
+    transform: scale(0.96);
+    box-shadow:
+      inset 0px 3px 6px var(--shadow-dark),
+      inset 0px -2px 4px var(--shadow-light);
+  }
+
+  /* Active / Selected */
+  .neu-active {
+    background: linear-gradient(145deg, #F4D6DF 0%, #FFF4F7 100%);
+    color: var(--primary-pink);
+    box-shadow:
+      inset 0px 4px 8px var(--shadow-dark),
+      inset 0px -3px 6px var(--shadow-light);
+  }
 }
 
-.dark .neu-flat {
-  background: #1F2937;
-  box-shadow: 8px 8px 16px #111827, -8px -8px 16px #374151;
-  border: 1px solid rgba(255,255,255,0.05);
-}
+/* ===============================
+   UTILITIES
+   =============================== */
 
-/* Pressed / Inset element */
-.neu-pressed {
-  background: #FFF0F3;
-  box-shadow: inset 6px 6px 12px var(--neu-shadow-dark), inset -6px -6px 12px var(--neu-shadow-light);
-  border-radius: 1rem;
-  border: none;
-}
-
-.dark .neu-pressed {
-  background: #1F2937;
-  box-shadow: inset 4px 4px 10px #0f1521, inset -4px -4px 10px #2f3d51;
-}
-
-/* Rectangular Action Button */
-.neu-btn {
-  background: #FFF0F3;
-  box-shadow: 8px 8px 16px var(--neu-shadow-dark), -8px -8px 16px var(--neu-shadow-light);
-  border-radius: 1rem;
-  border: 1px solid rgba(255,255,255,0.4);
-  color: var(--primary-pink);
-  font-weight: 700;
-  transition: all 0.2s ease-out;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.neu-btn:active {
-  box-shadow: inset 4px 4px 8px var(--neu-shadow-dark), inset -4px -4px 8px var(--neu-shadow-light);
-  transform: scale(0.98);
-}
-
-.dark .neu-btn {
-  background: #1F2937;
-  color: #F472B6;
-  box-shadow: 6px 6px 12px #111827, -6px -6px 12px #374151;
-  border: 1px solid rgba(255,255,255,0.05);
-}
-
-.dark .neu-btn:active {
-  box-shadow: inset 4px 4px 8px #0f1521, inset -4px -4px 8px #2f3d51;
-}
-
-/* Round Action Button (Icon Buttons) */
-.neu-btn-round {
-  background: #FFF0F3;
-  box-shadow: 8px 8px 16px var(--neu-shadow-dark), -8px -8px 16px var(--neu-shadow-light);
-  border-radius: 50%;
-  border: 1px solid rgba(255,255,255,0.4);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: all 0.2s ease-out;
-  color: #5D5D5D;
-}
-
-.neu-btn-round.primary {
-  color: var(--primary-pink);
-}
-
-.neu-btn-round:active {
-  box-shadow: inset 3px 3px 6px var(--neu-shadow-dark), inset -3px -3px 6px var(--neu-shadow-light);
-  transform: scale(0.95);
-}
-
-.dark .neu-btn-round {
-  background: #1F2937;
-  color: #9CA3AF;
-  box-shadow: 6px 6px 12px #111827, -6px -6px 12px #374151;
-  border: 1px solid rgba(255,255,255,0.05);
-}
-
-.dark .neu-btn-round:active {
-  box-shadow: inset 3px 3px 6px #0f1521, inset -3px -3px 6px #2f3d51;
-}
-
-/* Active/Selected State for Tab buttons */
-.neu-active {
-  background: #FFF0F3;
-  box-shadow: inset 5px 5px 10px var(--neu-shadow-dark), inset -5px -5px 10px var(--neu-shadow-light);
-  color: var(--primary-pink);
-  border: 1px solid transparent;
-}
-
-.dark .neu-active {
-  background: #1F2937;
-  box-shadow: inset 4px 4px 8px #0f1521, inset -4px -4px 8px #2f3d51;
-  color: #F472B6;
-}
-
-/* Scrollbar Hide */
 .no-scrollbar::-webkit-scrollbar {
   display: none;
 }
@@ -138,10 +118,18 @@ body.dark {
   scrollbar-width: none;
 }
 
-/* Animation utilities */
-.animate-in { animation-duration: 0.3s; animation-fill-mode: forwards; }
-.fade-in { animation-name: fadeIn; }
-@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+/* Animations */
+.animate-in {
+  animation-duration: 0.3s;
+  animation-fill-mode: forwards;
+}
+.fade-in {
+  animation-name: fadeIn;
+}
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
 
 .wheel-snap { scroll-snap-type: y mandatory; }
 .wheel-item { scroll-snap-align: center; }
