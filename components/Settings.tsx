@@ -17,7 +17,7 @@ interface SettingsProps {
   onClose?: () => void;
 }
 
-// Default reminders structure
+// Default reminders structure (unchanged)
 const DEFAULT_REMINDERS: ReminderConfig[] = [
     { id: '1', label: 'Period starts', time: '12:00', isEnabled: true, category: 'Period & fertility', selectedDays: [0,1,2,3,4,5,6] },
     { id: '2', label: 'Period ends', time: '20:00', isEnabled: true, category: 'Period & fertility', selectedDays: [0,1,2,3,4,5,6] },
@@ -29,7 +29,7 @@ const DEFAULT_REMINDERS: ReminderConfig[] = [
     
     { id: '7', label: 'Wake up reminder', time: '11:47', isEnabled: true, category: 'Lifestyle', selectedDays: [0,1,2,3,4,5,6] },
     { id: '8', label: 'Daily log', time: '11:56', isEnabled: true, category: 'Lifestyle', selectedDays: [0,1,2,3,4,5,6] },
-    { id: '9', label: 'Breast self-exam', time: '09:00', isEnabled: false, category: 'Lifestyle', selectedDays: [0] }, // Sunday
+    { id: '9', label: 'Breast self-exam', time: '09:00', isEnabled: false, category: 'Lifestyle', selectedDays: [0] },
     { id: '10', label: 'Drink water reminder', time: '10:00', isEnabled: false, category: 'Lifestyle', selectedDays: [0,1,2,3,4,5,6] },
     { id: '11', label: 'Meditation', time: '20:00', isEnabled: false, category: 'Lifestyle', selectedDays: [0,1,2,3,4,5,6] },
 
@@ -77,7 +77,7 @@ const ReminderEditor = ({
     return (
         <div className="fixed inset-0 z-[70] flex items-end justify-center bg-black/60 backdrop-blur-sm animate-in fade-in" onClick={onCancel}>
             <div 
-                className="bg-white dark:bg-gray-800 w-full max-w-md rounded-t-[2.5rem] p-6 pb-8 animate-in slide-in-from-bottom duration-300 relative shadow-2xl"
+                className="nm-card w-full max-w-md !rounded-b-none p-6 pb-8 animate-in slide-in-from-bottom duration-300 relative shadow-2xl"
                 onClick={e => e.stopPropagation()}
             >
                 {/* Handle */}
@@ -85,18 +85,18 @@ const ReminderEditor = ({
                 
                 <div className="flex justify-between items-center mb-6 mt-2">
                     <h3 className="text-xl font-bold text-gray-800 dark:text-white">Edit Reminder</h3>
-                    <button onClick={onCancel} className="p-2 bg-gray-100 dark:bg-gray-700 rounded-full text-gray-500 hover:text-gray-700 dark:hover:text-gray-200">
+                    <button onClick={onCancel} className="nm-btn w-8 h-8 flex items-center justify-center text-gray-500">
                         <X size={20} />
                     </button>
                 </div>
 
                 <div className="mb-6">
-                     <p className="text-sm font-bold text-[#E84C7C] mb-1">{config.category}</p>
+                     <p className="text-sm font-bold text-[var(--nm-accent)] mb-1">{config.category}</p>
                      <h2 className="text-2xl font-bold text-gray-800 dark:text-white">{config.label}</h2>
                 </div>
 
                 {/* Time Picker */}
-                <div className="flex items-center justify-center gap-4 mb-8 bg-gray-50 dark:bg-gray-900/50 rounded-2xl p-4">
+                <div className="flex items-center justify-center gap-4 mb-8 nm-inset p-4 rounded-2xl">
                     <div className="flex flex-col items-center">
                         <div className="h-[120px] w-[60px] relative">
                             <ScrollPicker 
@@ -106,8 +106,8 @@ const ReminderEditor = ({
                                 formatLabel={(h) => h.toString().padStart(2, '0')}
                                 height={120}
                                 itemHeight={40}
-                                highlightClass="bg-gray-200/50 dark:bg-gray-600/50 rounded-lg"
-                                selectedItemClass="text-[#E84C7C] font-bold text-2xl scale-110"
+                                highlightClass="bg-white/50 rounded-lg"
+                                selectedItemClass="text-[var(--nm-accent)] font-bold text-2xl scale-110"
                                 itemClass="text-gray-400 text-lg opacity-40 scale-90"
                             />
                         </div>
@@ -123,8 +123,8 @@ const ReminderEditor = ({
                                 formatLabel={(m) => m.toString().padStart(2, '0')}
                                 height={120}
                                 itemHeight={40}
-                                highlightClass="bg-gray-200/50 dark:bg-gray-600/50 rounded-lg"
-                                selectedItemClass="text-[#E84C7C] font-bold text-2xl scale-110"
+                                highlightClass="bg-white/50 rounded-lg"
+                                selectedItemClass="text-[var(--nm-accent)] font-bold text-2xl scale-110"
                                 itemClass="text-gray-400 text-lg opacity-40 scale-90"
                             />
                         </div>
@@ -146,8 +146,8 @@ const ReminderEditor = ({
                                     onClick={() => toggleDay(idx)}
                                     className={`w-10 h-10 rounded-full flex items-center justify-center text-xs font-bold transition-all ${
                                         isSelected 
-                                        ? 'bg-[#E84C7C] text-white shadow-lg shadow-pink-200 dark:shadow-none scale-110' 
-                                        : 'bg-gray-100 dark:bg-gray-700 text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-600'
+                                        ? 'bg-[var(--nm-accent)] text-white shadow-lg scale-110' 
+                                        : 'nm-btn text-gray-400'
                                     }`}
                                 >
                                     {day.charAt(0)}
@@ -162,7 +162,7 @@ const ReminderEditor = ({
 
                 <button 
                     onClick={handleSave}
-                    className="w-full py-4 bg-[#E84C7C] text-white rounded-xl font-bold shadow-lg shadow-pink-200 dark:shadow-pink-900/30 active:scale-95 transition-all flex items-center justify-center gap-2"
+                    className="w-full py-4 nm-btn-primary font-bold active:scale-95 transition-all flex items-center justify-center gap-2"
                 >
                     <Check size={20} /> Save Changes
                 </button>
@@ -232,7 +232,7 @@ const Settings: React.FC<SettingsProps> = ({
   const ReminderView = () => (
       <div className="p-6 pb-32 animate-in slide-in-from-right duration-300">
           <div className="flex items-center gap-4 mb-8">
-              <button onClick={() => setView('MAIN')} className="p-2 -ml-2 rounded-full hover:bg-black/5 dark:hover:bg-white/10">
+              <button onClick={() => setView('MAIN')} className="nm-btn w-10 h-10 flex items-center justify-center">
                   <ArrowLeft size={24} className="text-[#2D2D2D] dark:text-white" />
               </button>
               <h2 className="text-2xl font-bold text-[#2D2D2D] dark:text-white">Reminders</h2>
@@ -241,17 +241,17 @@ const Settings: React.FC<SettingsProps> = ({
           {['Period & fertility', 'Medicine', 'Lifestyle', 'Exercise'].map(category => (
               <div key={category} className="mb-8">
                   <h3 className="text-lg font-medium text-gray-500 dark:text-gray-400 mb-3 px-1">{category}</h3>
-                  <div className="bg-[#2D2D44] rounded-2xl overflow-hidden shadow-sm border border-gray-700/50">
+                  <div className="nm-card overflow-hidden">
                       {reminders.filter(r => r.category === category).map((reminder, idx, arr) => (
                           <div 
                             key={reminder.id} 
                             onClick={() => setEditingReminder(reminder)}
-                            className={`p-4 flex items-center justify-between cursor-pointer active:bg-white/5 transition-colors ${idx !== arr.length - 1 ? 'border-b border-gray-700' : ''}`}
+                            className={`p-4 flex items-center justify-between cursor-pointer active:bg-white/10 transition-colors ${idx !== arr.length - 1 ? 'border-b border-gray-100 dark:border-gray-700' : ''}`}
                           >
                               <div className="flex-1 mr-4">
-                                  <div className="text-white font-medium mb-1">{reminder.label}</div>
+                                  <div className="text-gray-800 dark:text-white font-medium mb-1">{reminder.label}</div>
                                   <div className="flex items-center gap-2 flex-wrap">
-                                      <span className="text-[#E84C7C] font-bold text-sm bg-pink-500/10 px-2 py-0.5 rounded">{reminder.time}</span>
+                                      <span className="text-[var(--nm-accent)] font-bold text-sm bg-pink-100 dark:bg-pink-900/30 px-2 py-0.5 rounded">{reminder.time}</span>
                                       <span className="text-gray-400 text-xs truncate max-w-[150px]">{formatDaysSummary(reminder.selectedDays)}</span>
                                   </div>
                               </div>
@@ -259,16 +259,16 @@ const Settings: React.FC<SettingsProps> = ({
                               <div className="flex items-center gap-3">
                                 <button 
                                     onClick={(e) => { e.stopPropagation(); toggleReminder(reminder.id); }}
-                                    className={`w-12 h-7 rounded-full relative transition-colors duration-300 ${reminder.isEnabled ? 'bg-[#E84C7C]' : 'bg-gray-600'}`}
+                                    className={`w-12 h-7 rounded-full relative transition-colors duration-300 ${reminder.isEnabled ? 'bg-[var(--nm-accent)]' : 'bg-gray-300'}`}
                                 >
                                     <div className={`absolute top-1 w-5 h-5 bg-white rounded-full shadow-sm transition-all duration-300 ${reminder.isEnabled ? 'left-6' : 'left-1'}`} />
                                 </button>
-                                <ChevronRight size={16} className="text-gray-500" />
+                                <ChevronRight size={16} className="text-gray-400" />
                               </div>
                           </div>
                       ))}
                       {/* Placeholder Add Button */}
-                      <div className="p-4 flex items-center justify-between border-t border-gray-700 bg-[#35354e]/50 hover:bg-[#35354e] transition-colors cursor-pointer">
+                      <div className="p-4 flex items-center justify-between border-t border-gray-100 dark:border-gray-700 hover:bg-white/30 transition-colors cursor-pointer">
                           <span className="text-gray-400 font-medium text-sm">Add new {category.toLowerCase()} reminder</span>
                           <div className="w-6 h-6 rounded-full bg-[#7B86CB]/20 text-[#7B86CB] flex items-center justify-center">
                               <PlusIcon />
@@ -281,7 +281,7 @@ const Settings: React.FC<SettingsProps> = ({
   );
 
   return (
-    <div className="flex flex-col h-full bg-[#FFF0F3] dark:bg-gray-900 overflow-y-auto no-scrollbar pb-32 transition-colors duration-300">
+    <div className="flex flex-col h-full bg-transparent overflow-y-auto no-scrollbar pb-32 transition-colors duration-300">
       
       {/* Modal Overlay for Editing */}
       {editingReminder && (
@@ -299,27 +299,27 @@ const Settings: React.FC<SettingsProps> = ({
             <header className="flex justify-between items-center mb-6">
                 <h1 className="text-3xl font-bold text-[#2D2D2D] dark:text-white">Settings</h1>
                 {onClose ? (
-                    <button onClick={onClose} className="p-2 -mr-2 bg-white dark:bg-gray-800 rounded-full shadow-sm text-gray-400 hover:text-gray-600 dark:hover:text-gray-200">
+                    <button onClick={onClose} className="nm-btn w-10 h-10 flex items-center justify-center text-gray-400">
                         <X size={20} />
                     </button>
                 ) : (
-                    <button className="p-2 bg-white dark:bg-gray-800 rounded-full shadow-sm text-gray-500 dark:text-gray-300">
+                    <button className="nm-btn w-10 h-10 flex items-center justify-center text-gray-500">
                         <Bell size={20} />
                     </button>
                 )}
             </header>
 
             {/* Profile Management */}
-            <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm p-2 mb-6 border border-pink-50 dark:border-gray-700 transition-colors">
-                <div className="p-4 border-b border-gray-50 dark:border-gray-700">
+            <div className="nm-card p-2 mb-6">
+                <div className="p-4 border-b border-gray-100 dark:border-gray-700">
                     <h3 className="font-semibold text-gray-800 dark:text-gray-100">Profile Management</h3>
                 </div>
                 
-                <div className="divide-y divide-gray-50 dark:divide-gray-700">
+                <div className="divide-y divide-gray-100 dark:divide-gray-700">
                     {profiles.map(user => (
                         <div key={user.id} className="p-4 flex items-center justify-between">
                             <div className="flex items-center gap-3">
-                                <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold shadow-sm ${user.relationship === 'Self' ? 'bg-pink-100 text-[#E84C7C]' : 'bg-gray-100 text-gray-500'}`}>
+                                <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold shadow-sm ${user.relationship === 'Self' ? 'bg-pink-100 text-[var(--nm-accent)]' : 'bg-gray-100 text-gray-500'}`}>
                                     {user.name.charAt(0).toUpperCase()}
                                 </div>
                                 <div>
@@ -347,7 +347,7 @@ const Settings: React.FC<SettingsProps> = ({
 
                 <button 
                     onClick={onAddProfile}
-                    className="w-full p-4 flex items-center justify-between hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors text-left border-t border-gray-50 dark:border-gray-700"
+                    className="w-full p-4 flex items-center justify-between hover:bg-white/30 transition-colors text-left border-t border-gray-100 dark:border-gray-700"
                 >
                     <div className="flex items-center gap-3 text-gray-600 dark:text-gray-300">
                     <UserPlus size={18} />
@@ -358,10 +358,10 @@ const Settings: React.FC<SettingsProps> = ({
             </div>
 
             {/* Reminders Entry Point */}
-            <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm p-2 mb-6 border border-pink-50 dark:border-gray-700 transition-colors">
+            <div className="nm-card p-2 mb-6">
                 <button 
                     onClick={() => setView('REMINDERS')}
-                    className="w-full p-4 flex items-center justify-between hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors text-left"
+                    className="w-full p-4 flex items-center justify-between hover:bg-white/30 transition-colors text-left"
                 >
                     <div className="flex items-center gap-3 text-gray-600 dark:text-gray-300">
                         <Clock size={18} />
@@ -375,9 +375,9 @@ const Settings: React.FC<SettingsProps> = ({
             </div>
 
             {/* Privacy & Security */}
-            <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm p-2 mb-6 border border-pink-50 dark:border-gray-700 transition-colors">
-                <div className="p-4 border-b border-gray-50 dark:border-gray-700 flex items-center gap-3">
-                <Shield className="text-[#E84C7C]" size={20} />
+            <div className="nm-card p-2 mb-6">
+                <div className="p-4 border-b border-gray-100 dark:border-gray-700 flex items-center gap-3">
+                <Shield className="text-[var(--nm-accent)]" size={20} />
                 <div className="flex-1">
                     <h3 className="font-semibold text-gray-800 dark:text-gray-100">Privacy & Security</h3>
                     <p className="text-xs text-gray-500 dark:text-gray-400">Your data is stored locally and encrypted</p>
@@ -389,14 +389,14 @@ const Settings: React.FC<SettingsProps> = ({
                     <Lock size={18} />
                     <span className="text-sm font-medium">PIN Lock</span>
                 </div>
-                <div className="w-11 h-6 bg-[#E84C7C] rounded-full relative cursor-pointer">
+                <div className="w-11 h-6 bg-[var(--nm-accent)] rounded-full relative cursor-pointer">
                     <div className="absolute right-1 top-1 w-4 h-4 bg-white rounded-full shadow-sm" />
                 </div>
                 </div>
 
                 <button 
                 onClick={onExport}
-                className="w-full p-4 flex items-center justify-between hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors text-left"
+                className="w-full p-4 flex items-center justify-between hover:bg-white/30 transition-colors text-left"
                 >
                 <div className="flex items-center gap-3 text-gray-600 dark:text-gray-300">
                     <Download size={18} />
@@ -407,7 +407,7 @@ const Settings: React.FC<SettingsProps> = ({
 
                 <button 
                 onClick={() => fileInputRef.current?.click()}
-                className="w-full p-4 flex items-center justify-between hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors text-left"
+                className="w-full p-4 flex items-center justify-between hover:bg-white/30 transition-colors text-left"
                 >
                 <div className="flex items-center gap-3 text-gray-600 dark:text-gray-300">
                     <Upload size={18} />
@@ -425,7 +425,7 @@ const Settings: React.FC<SettingsProps> = ({
             </div>
 
             {/* Preferences */}
-            <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm p-4 mb-6 border border-pink-50 dark:border-gray-700 transition-colors">
+            <div className="nm-card p-4 mb-6">
                 <h3 className="font-semibold text-gray-800 dark:text-gray-100 mb-4 ml-1">Preferences</h3>
                 
                 <div 
@@ -438,7 +438,7 @@ const Settings: React.FC<SettingsProps> = ({
                 </div>
                 
                 {/* Toggle Switch */}
-                <div className={`w-11 h-6 rounded-full relative transition-colors duration-300 ${isDarkMode ? 'bg-[#E84C7C]' : 'bg-gray-200'}`}>
+                <div className={`w-11 h-6 rounded-full relative transition-colors duration-300 ${isDarkMode ? 'bg-[var(--nm-accent)]' : 'bg-gray-200'}`}>
                     <div className={`absolute top-1 w-4 h-4 bg-white rounded-full shadow-sm transition-all duration-300 ${isDarkMode ? 'left-6' : 'left-1'}`} />
                 </div>
                 </div>
@@ -450,7 +450,7 @@ const Settings: React.FC<SettingsProps> = ({
                 </div>
                 <button 
                     onClick={onTestNotification}
-                    className="text-xs font-bold text-[#E84C7C] border border-pink-100 dark:border-pink-900/50 bg-pink-50 dark:bg-pink-900/20 px-3 py-1 rounded-full hover:bg-pink-100 dark:hover:bg-pink-900/40 transition-colors"
+                    className="nm-btn text-xs px-3 py-1"
                 >
                     Send
                 </button>
@@ -460,7 +460,7 @@ const Settings: React.FC<SettingsProps> = ({
             {/* Log Out Button */}
             <button 
                 onClick={onLogout}
-                className="w-full p-4 bg-white dark:bg-gray-800 rounded-2xl shadow-sm mb-6 border border-pink-50 dark:border-gray-700 flex items-center gap-3 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+                className="w-full p-4 nm-card flex items-center gap-3 text-gray-600 dark:text-gray-300 hover:bg-white/30 transition-colors mb-6"
             >
                 <LogOut size={18} />
                 <span className="font-medium">Log Out</span>
@@ -488,7 +488,6 @@ const Settings: React.FC<SettingsProps> = ({
   );
 };
 
-// Simple Icon helper
 const PlusIcon = () => (
     <svg width="12" height="12" viewBox="0 0 12 12" fill="none" xmlns="http://www.w3.org/2000/svg">
         <path d="M6 1V11M1 6H11" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>

@@ -30,6 +30,13 @@ export interface SymptomEntry {
   category: 'Head' | 'Body' | 'Cervix' | 'Fluid' | 'Abdomen' | 'Mental';
 }
 
+export interface YogaExercise {
+  name: string;
+  description: string;
+  durationSeconds: number;
+  difficulty: 'Beginner' | 'Intermediate' | 'Advanced';
+}
+
 export interface DailyLog {
   date: string;
   waterIntake: number; // ml
@@ -44,6 +51,7 @@ export interface DailyLog {
   didExercise: boolean;
   exerciseType?: string;
   exerciseDuration?: number; // minutes
+  completedYogaExercises?: YogaExercise[];
   habits: {
     smoked: boolean;
     drank: boolean;
@@ -94,11 +102,4 @@ export interface PMSAnalysis {
   severity: PMSRiskLevel;
   minDelay: number;
   maxDelay: number;
-}
-
-export interface YogaExercise {
-  name: string;
-  description: string;
-  durationSeconds: number;
-  difficulty: 'Beginner' | 'Intermediate' | 'Advanced';
 }
