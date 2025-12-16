@@ -15,6 +15,7 @@ import { getDayStatus, calculateWaterTarget } from './utils/calculations';
 
 import { syncProfileToIDB, getLastNotification, logNotificationSent } from './utils/db';
 import { triggerLocalNotification, checkPeriodicNotifications, checkMoodTrigger } from './utils/scheduler';
+import { triggerHaptic, setHapticsEnabled, isHapticsEnabled } from './utils/haptics';
 
 const USER_KEY_PREFIX = 'KIMI_USER_';
 const LOGS_KEY_PREFIX = 'KIMI_LOGS_';
@@ -28,7 +29,8 @@ export default function App() {
     logs: {},
     profiles: {},
     activeProfileId: null,
-    darkMode: false
+    darkMode: false,
+    hapticsEnabled: isHapticsEnabled()
   });
 
   const [currentDate, setCurrentDate] = useState(new Date());
@@ -114,7 +116,17 @@ export default function App() {
     return () => window.removeEventListener('popstate', handlePopState);
   }, [state.view]);
 
-  const toggleDarkMode = () => setState(s => ({ ...s, darkMode: !s.darkMode }));
+  const toggleDarkMode = () => {
+      setState(s => ({ ...s, darkMode: !s.darkMode }));
+      triggerHaptic('medium');
+  };
+  
+  const toggleHaptics = () => {
+      const newValue = !state.hapticsEnabled;
+      setState(s => ({ ...s, hapticsEnabled: newValue }));
+      setHapticsEnabled(newValue);
+      if (newValue) triggerHaptic('medium');
+  };
 
   const handleSplashComplete = () => {
     const storedTheme = localStorage.getItem('KIMI_THEME');
@@ -237,20 +249,25 @@ export default function App() {
               cycle: activeData.cycle,
               logs: activeData.logs
             }));
+            triggerHaptic('success');
             checkLoginNotification();
         } else {
              setLoginError(true);
+             triggerHaptic('error');
         }
       } else {
         setLoginError(true);
+        triggerHaptic('error');
       }
     } else {
        setLoginError(true);
+       triggerHaptic('error');
     }
   };
 
   const handleLogout = () => {
     setState(s => ({ ...s, view: 'PIN', user: null, cycle: null, logs: {}, profiles: {}, activeProfileId: null }));
+    triggerHaptic('medium');
   };
 
   const handleReset = () => {
@@ -261,7 +278,8 @@ export default function App() {
             localStorage.removeItem(key);
         }
     });
-    setState({ view: 'LANDING', user: null, cycle: null, logs: {}, profiles: {}, activeProfileId: null, darkMode: state.darkMode });
+    setState({ view: 'LANDING', user: null, cycle: null, logs: {}, profiles: {}, activeProfileId: null, darkMode: state.darkMode, hapticsEnabled: state.hapticsEnabled });
+    triggerHaptic('warning');
   };
 
   const handleCreateProfile = (user: UserProfile, cycle: CycleData, initialLogs: Record<string, DailyLog> = {}) => {
@@ -293,6 +311,7 @@ export default function App() {
       cycle: cycle,
       logs: initialLogs
     }));
+    triggerHaptic('success');
   };
 
   const switchProfile = (profileId: string) => {
@@ -314,6 +333,7 @@ export default function App() {
               logs: target.logs,
               view: 'HOME'
           }));
+          triggerHaptic('medium');
       }
   };
 
@@ -355,6 +375,7 @@ export default function App() {
         cycle: nextActiveData.cycle,
         logs: nextActiveData.logs
     }));
+    triggerHaptic('warning');
   };
 
   const saveLog = (log: DailyLog) => {
@@ -370,6 +391,7 @@ export default function App() {
     localStorage.setItem(`${LOGS_KEY_PREFIX}${state.activeProfileId}`, encryptData(newLogs, pinToUse));
     
     setState(s => ({ ...s, profiles: newProfiles, logs: newLogs }));
+    // Note: Success haptic handled in DailyLog.tsx onSave calls for specific actions, or we can do it here
   };
 
   const handleExportData = () => {
@@ -388,6 +410,7 @@ export default function App() {
     a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
+    triggerHaptic('medium');
   };
 
   const handleImportData = (file: File) => {
@@ -436,12 +459,15 @@ export default function App() {
                 logs: activeData?.logs || {}
             }));
             alert('Data imported successfully!');
+            triggerHaptic('success');
         } else {
             alert('Invalid file format.');
+            triggerHaptic('error');
         }
       } catch (err) {
         console.error(err);
         alert('Failed to import data.');
+        triggerHaptic('error');
       }
     };
     reader.readAsText(file);
@@ -462,6 +488,7 @@ export default function App() {
       } else {
           triggerLocalNotification("KIMI Test", "Notifications working!", "test");
       }
+      triggerHaptic('medium');
   };
 
   // --- RENDERERS ---
@@ -478,9 +505,9 @@ export default function App() {
     return (
       <div className="p-4 pt-10 h-full overflow-y-auto pb-32">
         <div className="flex justify-between items-center mb-6">
-           <button onClick={() => setCurrentDate(subMonths(currentDate, 1))} className="neu-btn-round w-10 h-10">&lt;</button>
+           <button onClick={() => { setCurrentDate(subMonths(currentDate, 1)); triggerHaptic('light'); }} className="neu-btn-round w-10 h-10">&lt;</button>
            <h2 className="text-xl font-bold text-[#2D2D2D] dark:text-white">{format(currentDate, 'MMMM yyyy')}</h2>
-           <button onClick={() => setCurrentDate(addMonths(currentDate, 1))} className="neu-btn-round w-10 h-10">&gt;</button>
+           <button onClick={() => { setCurrentDate(addMonths(currentDate, 1)); triggerHaptic('light'); }} className="neu-btn-round w-10 h-10">&gt;</button>
         </div>
 
         <div className="neu-flat p-4 mb-4">
@@ -554,11 +581,11 @@ export default function App() {
                             {p.user.name.charAt(0).toUpperCase()}
                         </button>
                     ))}
-                    <button onClick={() => setState(s => ({...s, view: 'ONBOARDING'}))} className="neu-btn-round w-10 h-10">
+                    <button onClick={() => { setState(s => ({...s, view: 'ONBOARDING'})); triggerHaptic('medium'); }} className="neu-btn-round w-10 h-10">
                         <Plus size={16} />
                     </button>
                 </div>
-                <button onClick={() => setState(s => ({...s, view: 'SETTINGS'}))} className="neu-btn-round w-10 h-10">
+                <button onClick={() => { setState(s => ({...s, view: 'SETTINGS'})); triggerHaptic('medium'); }} className="neu-btn-round w-10 h-10">
                     <SettingsIcon size={20} />
                 </button>
             </div>
@@ -569,6 +596,11 @@ export default function App() {
   };
 
   const renderInsights = () => {
+    // ... (Keep existing implementation logic)
+    // For brevity, using the same implementation structure, but assuming `renderInsights` content is large.
+    // I will include the full existing implementation but just adding haptic triggers if any interaction exists.
+    // Insights view is mostly read-only, so no major haptic changes needed here unless we add interactions.
+    // Copying existing implementation below:
     const logs = Object.values(state.logs) as DailyLog[];
     const totalDays = logs.length;
     
@@ -827,7 +859,7 @@ export default function App() {
         date: today, waterIntake: 0, waterTarget: waterTarget, sleepDuration: 0, sleepTarget: 480,
         flow: null, symptoms: [], detailedSymptoms: [], mood: [], medication: false, didExercise: false, habits: { smoked: false, drank: false } 
     };
-    return <DailyLogView log={log} onSave={saveLog} onClose={() => setState(s => ({...s, view: 'HOME'}))} />;
+    return <DailyLogView log={log} onSave={saveLog} onClose={() => { setState(s => ({...s, view: 'HOME'})); triggerHaptic('light'); }} />;
   };
 
   const renderMine = () => {
@@ -848,8 +880,8 @@ export default function App() {
         {state.view === 'DAILY_LOG' && renderDailyLog()}
         {state.view === 'INSIGHTS' && renderInsights()}
         {state.view === 'MINE' && renderMine()}
-        {state.view === 'LANDING' && <LandingPage onStartTracking={() => setState(s => ({...s, view: 'ONBOARDING'}))} />}
-        {state.view === 'ONBOARDING' && <Onboarding onComplete={handleCreateProfile} isAddingProfile={Object.keys(state.profiles).length > 0} onCancel={() => setState(s => ({...s, view: 'HOME'}))} />}
+        {state.view === 'LANDING' && <LandingPage onStartTracking={() => { setState(s => ({...s, view: 'ONBOARDING'})); triggerHaptic('medium'); }} />}
+        {state.view === 'ONBOARDING' && <Onboarding onComplete={handleCreateProfile} isAddingProfile={Object.keys(state.profiles).length > 0} onCancel={() => { setState(s => ({...s, view: 'HOME'})); triggerHaptic('light'); }} />}
         {state.view === 'PIN' && <PinLock onSuccess={handleLogin} expectedPin={state.user?.pin} onReset={handleReset} loginError={loginError} onClearLoginError={() => setLoginError(false)} />}
         {state.view === 'SETTINGS' && (
             <Settings 
@@ -857,13 +889,15 @@ export default function App() {
                 onDeleteProfile={handleDeleteProfile}
                 onExport={handleExportData}
                 onImport={handleImportData}
-                onDeleteData={() => setShowDeleteModal(true)}
+                onDeleteData={() => { setShowDeleteModal(true); triggerHaptic('warning'); }}
                 isDarkMode={state.darkMode}
                 onToggleDarkMode={toggleDarkMode}
                 onLogout={handleLogout}
-                onAddProfile={() => setState(s => ({ ...s, view: 'ONBOARDING' }))}
+                onAddProfile={() => { setState(s => ({ ...s, view: 'ONBOARDING' })); triggerHaptic('medium'); }}
                 onTestNotification={handleTestNotification}
-                onClose={() => setState(s => ({...s, view: 'HOME'}))}
+                onClose={() => { setState(s => ({...s, view: 'HOME'})); triggerHaptic('light'); }}
+                isHapticsEnabled={state.hapticsEnabled}
+                onToggleHaptics={toggleHaptics}
             />
         )}
       </main>
@@ -877,7 +911,7 @@ export default function App() {
              <div className="flex flex-col gap-3">
                  <button onClick={handleExportData} className="neu-btn w-full py-3">Export Backup</button>
                  <button onClick={confirmDelete} className="neu-btn w-full py-3 text-red-500 border-red-200">Yes, Delete</button>
-                 <button onClick={() => setShowDeleteModal(false)} className="w-full py-3 text-gray-500 font-medium">Cancel</button>
+                 <button onClick={() => { setShowDeleteModal(false); triggerHaptic('light'); }} className="w-full py-3 text-gray-500 font-medium">Cancel</button>
              </div>
           </div>
         </div>
@@ -889,7 +923,7 @@ export default function App() {
             {[{view: 'HOME', icon: Home, label: 'Home'}, {view: 'CALENDAR', icon: Calendar, label: 'Calendar'}, {view: 'INSIGHTS', icon: BarChart2, label: 'Insights'}, {view: 'MINE', icon: User, label: 'Mine'}].map(item => (
                 <React.Fragment key={item.view}>
                     {item.view === 'INSIGHTS' && <div className="w-16" />}
-                    <button onClick={() => setState(s => ({...s, view: item.view as any}))} className={`flex-1 flex flex-col items-center gap-1 ${state.view === item.view ? 'text-[#E84C7C]' : 'text-gray-400'}`}>
+                    <button onClick={() => { setState(s => ({...s, view: item.view as any})); triggerHaptic('light'); }} className={`flex-1 flex flex-col items-center gap-1 ${state.view === item.view ? 'text-[#E84C7C]' : 'text-gray-400'}`}>
                         {state.view === item.view ? 
                             <div className="neu-active p-2 rounded-xl"><item.icon size={20} /></div> : 
                             <item.icon size={20} />
@@ -900,7 +934,7 @@ export default function App() {
             ))}
           </nav>
           <div className="absolute bottom-[calc(2.5rem+env(safe-area-inset-bottom))] left-1/2 -translate-x-1/2 z-50">
-            <button onClick={() => setState(s => ({...s, view: 'DAILY_LOG'}))} className={`neu-btn-round w-16 h-16 bg-[#E84C7C] text-[#E84C7C] border-4 border-[#FFF0F3]`}>
+            <button onClick={() => { setState(s => ({...s, view: 'DAILY_LOG'})); triggerHaptic('medium'); }} className={`neu-btn-round w-16 h-16 bg-[#E84C7C] text-[#E84C7C] border-4 border-[#FFF0F3]`}>
               <PlusCircle size={32} />
             </button>
           </div>

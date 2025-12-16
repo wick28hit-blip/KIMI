@@ -1,5 +1,5 @@
 import React, { useRef, useState, useEffect } from 'react';
-import { Bell, Moon, Shield, Download, Upload, Trash2, ChevronRight, Lock, Sun, LogOut, UserPlus, Clock, ArrowLeft, X, Check, Calendar } from 'lucide-react';
+import { Bell, Moon, Shield, Download, Upload, Trash2, ChevronRight, Lock, Sun, LogOut, UserPlus, Clock, ArrowLeft, X, Check, Calendar, Zap } from 'lucide-react';
 import { UserProfile, ReminderConfig } from '../types';
 import ScrollPicker from './ScrollPicker';
 
@@ -15,6 +15,8 @@ interface SettingsProps {
   onAddProfile: () => void;
   onTestNotification: () => void;
   onClose?: () => void;
+  isHapticsEnabled?: boolean;
+  onToggleHaptics?: () => void;
 }
 
 const DEFAULT_REMINDERS: ReminderConfig[] = [
@@ -171,7 +173,9 @@ const Settings: React.FC<SettingsProps> = ({
   onLogout,
   onAddProfile,
   onTestNotification,
-  onClose
+  onClose,
+  isHapticsEnabled,
+  onToggleHaptics
 }) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [view, setView] = useState<'MAIN' | 'REMINDERS'>('MAIN');
@@ -421,6 +425,22 @@ const Settings: React.FC<SettingsProps> = ({
                         <div className={`absolute top-1 w-4 h-4 rounded-full shadow-sm transition-all duration-300 ${isDarkMode ? 'left-6 bg-[#E84C7C] neu-flat' : 'left-1 bg-gray-400'}`} />
                     </div>
                 </div>
+
+                {onToggleHaptics && (
+                     <div 
+                        className="flex items-center justify-between mb-6 cursor-pointer" 
+                        onClick={onToggleHaptics}
+                    >
+                        <div className="flex items-center gap-3 text-gray-600 dark:text-gray-300">
+                            <Zap size={18} className={isHapticsEnabled ? 'text-amber-400' : 'text-gray-400'} />
+                            <span className="text-sm font-medium">Haptic Feedback</span>
+                        </div>
+                        
+                        <div className={`w-11 h-6 neu-pressed rounded-full relative transition-colors duration-300`}>
+                            <div className={`absolute top-1 w-4 h-4 rounded-full shadow-sm transition-all duration-300 ${isHapticsEnabled ? 'left-6 bg-[#E84C7C] neu-flat' : 'left-1 bg-gray-400'}`} />
+                        </div>
+                    </div>
+                )}
 
                 <div className="flex items-center justify-between mb-2">
                     <div className="flex items-center gap-3 text-gray-600 dark:text-gray-300">

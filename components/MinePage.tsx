@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { Droplet, Moon, Dumbbell, Sparkles, Plus, Play, Pause, RotateCcw, X, Clock, Flame, GlassWater, Minus, Sun, Check, Trophy } from 'lucide-react';
+import { Droplet, Moon, Plus, Play, Pause, RotateCcw, X, Clock, Flame, GlassWater, Minus, Sun, Check, Trophy } from 'lucide-react';
 import { DailyLog, UserProfile, YogaExercise } from '../types';
 import ScrollPicker from './ScrollPicker';
+import { triggerHaptic } from '../utils/haptics';
 
 interface MinePageProps {
   log: DailyLog;
@@ -48,7 +49,35 @@ const STATIC_YOGA_EXERCISES: YogaExercise[] = [
   }
 ];
 
-const EXERCISE_TYPES = ['Cardio', 'Strength', 'Yoga', 'HIIT', 'Pilates', 'Walking', 'Running', 'Cycling', 'Swimming', 'Other'];
+// --- Custom SVGs for Enhanced 3D Look ---
+
+const GymIcon = () => (
+  <svg width="42" height="42" viewBox="0 0 48 48" fill="none" className="mb-3 relative z-10 drop-shadow-md">
+    <path d="M11 19.5L28.5 37" stroke="white" strokeWidth="4" strokeLinecap="round"/>
+    <path d="M14 13L9 18" stroke="white" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round"/>
+    <path d="M8 24L13 29" stroke="white" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round"/>
+    <path d="M35 34L40 39" stroke="white" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round"/>
+    <path d="M29 28L34 33" stroke="white" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round"/>
+    {/* Weights Detail */}
+    <path d="M7 16C7 16 5 18 6 21" stroke="white" strokeWidth="3" strokeLinecap="round"/>
+    <path d="M32 31C32 31 30 33 33 36" stroke="white" strokeWidth="3" strokeLinecap="round"/>
+    {/* Shine */}
+    <path d="M16 15L18 17" stroke="white" strokeWidth="2" strokeLinecap="round" strokeOpacity="0.6"/>
+  </svg>
+);
+
+const YogaIcon = () => (
+  <svg width="42" height="42" viewBox="0 0 48 48" fill="none" className="mb-3 relative z-10 drop-shadow-md">
+    {/* Center Star/Sparkle */}
+    <path d="M24 8L27 19L38 22L27 25L24 36L21 25L10 22L21 19L24 8Z" stroke="white" strokeWidth="3" strokeLinejoin="round" fill="white" fillOpacity="0.15"/>
+    {/* Floating Orbs */}
+    <circle cx="38" cy="12" r="3" fill="white"/>
+    <circle cx="10" cy="34" r="2" fill="white" fillOpacity="0.8"/>
+    <circle cx="12" cy="10" r="1.5" fill="white" fillOpacity="0.6"/>
+    {/* Swoosh */}
+    <path d="M8 40C12 40 16 38 24 38C32 38 36 40 40 40" stroke="white" strokeWidth="2" strokeLinecap="round" strokeOpacity="0.6"/>
+  </svg>
+);
 
 const MinePage: React.FC<MinePageProps> = ({ log, onSaveLog, user }) => {
   const [activeModal, setActiveModal] = useState<'NONE' | 'WATER' | 'SLEEP' | 'GYM' | 'YOGA'>('NONE');
@@ -68,16 +97,29 @@ const MinePage: React.FC<MinePageProps> = ({ log, onSaveLog, user }) => {
   // --- Water Logic ---
   const handleWaterAdd = (amount: number) => {
     onSaveLog({ ...log, waterIntake: log.waterIntake + amount });
+    triggerHaptic('light');
   };
   
   const handleWaterRemove = (amount: number) => {
     onSaveLog({ ...log, waterIntake: Math.max(0, log.waterIntake - amount) });
+    triggerHaptic('light');
+  };
+
+  const saveHydration = () => {
+    setActiveModal('NONE');
+    triggerHaptic('success');
   };
 
   // --- Sleep Logic ---
   const handleSleepChange = (h: number, m: number) => {
     onSaveLog({ ...log, sleepDuration: h * 60 + m });
   };
+  
+  const saveSleep = () => {
+    setActiveModal('NONE');
+    triggerHaptic('success');
+  }
+
   const currentSleepHours = Math.floor(log.sleepDuration / 60);
   const currentSleepMinutes = log.sleepDuration % 60;
   
@@ -93,11 +135,13 @@ const MinePage: React.FC<MinePageProps> = ({ log, onSaveLog, user }) => {
         exerciseDuration: exerciseDuration
     });
     setActiveModal('NONE');
+    triggerHaptic('success');
   };
 
   // --- Yoga Logic (Static Data) ---
   const fetchYogaExercises = () => {
     setActiveModal('YOGA');
+    triggerHaptic('medium');
     
     if (yogaList.length > 0) return;
 
@@ -127,6 +171,7 @@ const MinePage: React.FC<MinePageProps> = ({ log, onSaveLog, user }) => {
   const handleYogaComplete = () => {
     if (!selectedYoga) return;
     setShowCompletion(true);
+    triggerHaptic('success');
     
     const durationMins = Math.ceil(selectedYoga.durationSeconds / 60);
     const existingList = log.completedYogaExercises || [];
@@ -152,12 +197,17 @@ const MinePage: React.FC<MinePageProps> = ({ log, onSaveLog, user }) => {
     setTimerSeconds(exercise.durationSeconds);
     setIsTimerRunning(false);
     setShowCompletion(false);
+    triggerHaptic('light');
   };
 
-  const toggleTimer = () => setIsTimerRunning(!isTimerRunning);
+  const toggleTimer = () => {
+      setIsTimerRunning(!isTimerRunning);
+      triggerHaptic('medium');
+  };
   const resetTimer = () => {
     if (selectedYoga) setTimerSeconds(selectedYoga.durationSeconds);
     setIsTimerRunning(false);
+    triggerHaptic('light');
   };
 
   const formatTime = (secs: number) => {
@@ -186,86 +236,119 @@ const MinePage: React.FC<MinePageProps> = ({ log, onSaveLog, user }) => {
       <div className="px-6 pb-6">
         <div className="grid grid-cols-2 gap-4">
           
-          {/* Hydration Card */}
+          {/* Water Card - 3D Block Style */}
           <div 
-            onClick={() => setActiveModal('WATER')}
-            className="group relative h-44 bg-gradient-to-br from-blue-400 to-cyan-500 rounded-3xl p-5 overflow-hidden shadow-lg shadow-blue-200 dark:shadow-none cursor-pointer transition-all active:scale-95 flex flex-col justify-between"
+            onClick={() => { setActiveModal('WATER'); triggerHaptic('medium'); }}
+            className="group relative h-48 rounded-[2rem] p-5 overflow-hidden cursor-pointer transition-all active:translate-y-2 active:border-b-0
+            bg-gradient-to-b from-[#4FC3F7] to-[#0288D1] 
+            border-b-[8px] border-[#01579B] 
+            shadow-[0_12px_25px_-5px_rgba(2,136,209,0.4)]"
           >
-            <div className="absolute -right-6 -top-6 w-32 h-32 bg-white/20 rounded-full blur-2xl group-hover:scale-125 transition-transform duration-500"></div>
-            <div>
-                <Droplet className="text-white relative z-10 mb-2" size={32} fill="white" fillOpacity={0.3} />
-                <h3 className="text-white font-bold text-lg relative z-10 leading-tight">Water<br/>Tracker</h3>
-            </div>
-            <div className="relative z-10">
-                <div className="flex items-baseline gap-1 text-white">
-                    <span className="text-2xl font-bold">{log.waterIntake}</span>
-                    <span className="text-xs opacity-80">ml</span>
-                </div>
-                <div className="w-full bg-black/20 h-1.5 rounded-full mt-2 overflow-hidden">
-                    <div className="bg-white h-full rounded-full transition-all duration-500" style={{ width: `${waterPercentage}%` }}></div>
-                </div>
-            </div>
-          </div>
-
-          {/* Sleep Card */}
-          <div 
-            onClick={() => setActiveModal('SLEEP')}
-            className="group relative h-44 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-3xl p-5 overflow-hidden shadow-lg shadow-indigo-200 dark:shadow-none cursor-pointer transition-all active:scale-95 flex flex-col justify-between"
-          >
-            <div className="absolute -right-6 -bottom-6 w-32 h-32 bg-white/20 rounded-full blur-2xl group-hover:scale-125 transition-transform duration-500"></div>
-            <div className="flex justify-between items-start">
+            {/* Highlight Shine */}
+            <div className="absolute top-0 left-0 right-0 h-1/2 bg-gradient-to-b from-white/20 to-transparent pointer-events-none rounded-t-[2rem]"></div>
+            
+            <div className="relative z-10 h-full flex flex-col justify-between">
                 <div>
-                    <Moon className="text-white relative z-10 mb-2" size={32} fill="white" fillOpacity={0.3} />
-                    <h3 className="text-white font-bold text-lg relative z-10 leading-tight">Sleep<br/>Monitor</h3>
+                    <Droplet className="text-white mb-3 drop-shadow-md" size={38} strokeWidth={2.5} />
+                    <h3 className="text-white font-bold text-lg leading-tight drop-shadow-sm">Water<br/>Tracker</h3>
                 </div>
-            </div>
-            <div className="relative z-10">
-                <div className="flex items-baseline gap-1 text-white">
-                    <span className="text-2xl font-bold">{currentSleepHours}</span>
-                    <span className="text-xs opacity-80">h</span>
-                    <span className="text-2xl font-bold ml-1">{currentSleepMinutes}</span>
-                    <span className="text-xs opacity-80">m</span>
-                </div>
-                <div className="w-full bg-black/20 h-1.5 rounded-full mt-2 overflow-hidden">
-                    <div className="bg-white h-full rounded-full transition-all duration-500" style={{ width: `${sleepPercentage}%` }}></div>
+                <div>
+                    <div className="flex items-baseline gap-1 text-white drop-shadow-md">
+                        <span className="text-2xl font-bold">{log.waterIntake}</span>
+                        <span className="text-xs font-bold opacity-90">ml</span>
+                    </div>
+                    {/* Progress Bar with Bevel */}
+                    <div className="w-full bg-black/20 h-2 rounded-full mt-3 overflow-hidden shadow-inner">
+                        <div className="bg-white h-full rounded-full shadow-[0_2px_4px_rgba(0,0,0,0.2)]" style={{ width: `${waterPercentage}%` }}></div>
+                    </div>
                 </div>
             </div>
           </div>
 
-          {/* Gym Card */}
+          {/* Sleep Card - 3D Block Style */}
+          <div 
+            onClick={() => { setActiveModal('SLEEP'); triggerHaptic('medium'); }}
+            className="group relative h-48 rounded-[2rem] p-5 overflow-hidden cursor-pointer transition-all active:translate-y-2 active:border-b-0
+            bg-gradient-to-b from-[#7E57C2] to-[#5E35B1] 
+            border-b-[8px] border-[#4527A0] 
+            shadow-[0_12px_25px_-5px_rgba(94,53,177,0.4)]"
+          >
+             {/* Highlight Shine */}
+            <div className="absolute top-0 left-0 right-0 h-1/2 bg-gradient-to-b from-white/20 to-transparent pointer-events-none rounded-t-[2rem]"></div>
+
+            <div className="relative z-10 h-full flex flex-col justify-between">
+                <div>
+                    <Moon className="text-white mb-3 drop-shadow-md" size={38} strokeWidth={2.5} />
+                    <h3 className="text-white font-bold text-lg leading-tight drop-shadow-sm">Sleep<br/>Monitor</h3>
+                </div>
+                <div>
+                    <div className="flex items-baseline gap-1 text-white drop-shadow-md">
+                        <span className="text-2xl font-bold">{currentSleepHours}</span>
+                        <span className="text-xs font-bold opacity-90">h</span>
+                        <span className="text-2xl font-bold ml-1">{currentSleepMinutes}</span>
+                        <span className="text-xs font-bold opacity-90">m</span>
+                    </div>
+                    {/* Progress Bar with Bevel */}
+                    <div className="w-full bg-black/20 h-2 rounded-full mt-3 overflow-hidden shadow-inner">
+                        <div className="bg-white h-full rounded-full shadow-[0_2px_4px_rgba(0,0,0,0.2)]" style={{ width: `${sleepPercentage}%` }}></div>
+                    </div>
+                </div>
+            </div>
+          </div>
+
+          {/* Gym Card - 3D Block Style */}
           <div 
             onClick={() => {
                 setExerciseType(log.exerciseType || 'Cardio');
                 setExerciseDuration(log.exerciseDuration || 30);
                 setActiveModal('GYM');
+                triggerHaptic('medium');
             }}
-            className="group relative h-44 bg-gradient-to-br from-orange-400 to-red-500 rounded-3xl p-5 overflow-hidden shadow-lg shadow-orange-200 dark:shadow-none cursor-pointer transition-all active:scale-95 flex flex-col justify-between"
+            className="group relative h-48 rounded-[2rem] p-5 overflow-hidden cursor-pointer transition-all active:translate-y-2 active:border-b-0
+            bg-gradient-to-b from-[#FF8A65] to-[#E64A19] 
+            border-b-[8px] border-[#BF360C] 
+            shadow-[0_12px_25px_-5px_rgba(230,74,25,0.4)]"
           >
-            <div className="absolute -right-4 -bottom-4 w-24 h-24 bg-white/20 rounded-full blur-xl group-hover:scale-150 transition-transform duration-500"></div>
-            <div>
-                <Dumbbell className="text-white relative z-10 mb-2" size={32} />
-                <h3 className="text-white font-bold text-lg relative z-10 leading-tight">
-                    {log.didExercise ? (log.exerciseType || 'Workout') : 'Gym\nWorkout'}
-                </h3>
+            {/* Highlight Shine */}
+            <div className="absolute top-0 left-0 right-0 h-1/2 bg-gradient-to-b from-white/20 to-transparent pointer-events-none rounded-t-[2rem]"></div>
+
+            <div className="relative z-10 h-full flex flex-col justify-between">
+                <div>
+                    <GymIcon />
+                    <h3 className="text-white font-bold text-lg leading-tight drop-shadow-sm">
+                        {log.didExercise ? (log.exerciseType || 'Workout') : 'Gym\nWorkout'}
+                    </h3>
+                </div>
+                {log.didExercise ? (
+                     <span className="text-xl font-bold text-white drop-shadow-md">{log.exerciseDuration || 30} min</span>
+                ) : (
+                     <div className="self-start text-[10px] font-bold text-[#BF360C] uppercase tracking-widest bg-white/90 px-3 py-1.5 rounded-lg shadow-sm">
+                        Log Activity
+                     </div>
+                )}
             </div>
-            {log.didExercise ? (
-                 <span className="relative z-10 text-xl font-bold text-white">{log.exerciseDuration || 30} min</span>
-            ) : (
-                 <span className="relative z-10 text-[10px] font-bold text-white/80 uppercase tracking-widest bg-black/10 px-2 py-1 rounded-lg backdrop-blur-sm w-fit">Log Activity</span>
-            )}
           </div>
 
-          {/* Yoga Card */}
+          {/* Yoga Card - 3D Block Style */}
           <div 
             onClick={fetchYogaExercises}
-            className="group relative h-44 bg-gradient-to-br from-pink-400 to-rose-500 rounded-3xl p-5 overflow-hidden shadow-lg shadow-pink-200 dark:shadow-none cursor-pointer transition-all active:scale-95 flex flex-col justify-between"
+            className="group relative h-48 rounded-[2rem] p-5 overflow-hidden cursor-pointer transition-all active:translate-y-2 active:border-b-0
+            bg-gradient-to-b from-[#F06292] to-[#D81B60] 
+            border-b-[8px] border-[#880E4F] 
+            shadow-[0_12px_25px_-5px_rgba(216,27,96,0.4)]"
           >
-            <div className="absolute -right-4 -bottom-4 w-24 h-24 bg-white/20 rounded-full blur-xl group-hover:scale-150 transition-transform duration-500"></div>
-            <div>
-                <Sparkles className="text-white relative z-10 mb-2" size={32} />
-                <h3 className="text-white font-bold text-lg relative z-10 leading-tight">Yoga<br/>Flow</h3>
+            {/* Highlight Shine */}
+            <div className="absolute top-0 left-0 right-0 h-1/2 bg-gradient-to-b from-white/20 to-transparent pointer-events-none rounded-t-[2rem]"></div>
+
+            <div className="relative z-10 h-full flex flex-col justify-between">
+                <div>
+                    <YogaIcon />
+                    <h3 className="text-white font-bold text-lg leading-tight drop-shadow-sm">Yoga<br/>Flow</h3>
+                </div>
+                 <div className="self-start text-[10px] font-bold text-[#880E4F] uppercase tracking-widest bg-white/90 px-3 py-1.5 rounded-lg shadow-sm">
+                    Wellness
+                 </div>
             </div>
-            <span className="relative z-10 text-[10px] font-bold text-white/80 uppercase tracking-widest bg-black/10 px-2 py-1 rounded-lg backdrop-blur-sm w-fit">Wellness</span>
           </div>
 
         </div>
@@ -372,7 +455,7 @@ const MinePage: React.FC<MinePageProps> = ({ log, onSaveLog, user }) => {
              </div>
              
              <button 
-                onClick={() => setActiveModal('NONE')}
+                onClick={saveHydration}
                 className="w-full py-4 mb-3 bg-blue-500 hover:bg-blue-400 text-white rounded-xl font-bold shadow-lg shadow-blue-200 dark:shadow-blue-900/30 active:scale-95 transition-all flex items-center justify-center gap-2"
              >
                  Save Hydration
@@ -567,7 +650,7 @@ const MinePage: React.FC<MinePageProps> = ({ log, onSaveLog, user }) => {
             </div>
 
              <button 
-                onClick={() => setActiveModal('NONE')}
+                onClick={saveSleep}
                 className="w-full py-4 bg-indigo-500 hover:bg-indigo-400 text-white rounded-xl font-bold shadow-lg shadow-indigo-900/50 transition-all active:scale-95 relative z-10"
              >
                  Save Sleep

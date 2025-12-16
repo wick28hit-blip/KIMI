@@ -1,4 +1,5 @@
 import React, { useRef, useEffect, UIEvent } from 'react';
+import { triggerHaptic } from '../utils/haptics';
 
 interface ScrollPickerProps<T> {
   items: T[];
@@ -54,6 +55,7 @@ const ScrollPicker = <T,>({
       const newItem = items[index];
       if (newItem !== value) {
         onChange(newItem);
+        triggerHaptic('light');
       }
     }
 

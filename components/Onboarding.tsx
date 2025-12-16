@@ -270,14 +270,14 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete, isAddingProfile = f
             
             <div className="flex-1 flex flex-col justify-evenly min-h-0">
               
-              <div className="space-y-1">
+              <div className="space-y-1 text-center">
                 <label className="block text-xs font-bold text-gray-500 mb-2 uppercase tracking-wide">Last Period Start</label>
-                <div className="flex gap-4">
+                <div className="flex gap-4 justify-center">
                     <ScrollPicker 
                     items={currentPickerDays} 
                     value={pickerDate.getDate()} 
                     onChange={handleRestrictedDayChange}
-                    className="flex-1"
+                    className="w-20"
                     height={100} 
                     itemHeight={32}
                     highlightClass="neu-pressed rounded-lg"
@@ -286,7 +286,7 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete, isAddingProfile = f
                     items={validMonthNames} 
                     value={format(pickerDate, 'MMMM')} 
                     onChange={handleRestrictedMonthChange}
-                    className="flex-[1.5]"
+                    className="w-40"
                     height={100}
                     itemHeight={32}
                     highlightClass="neu-pressed rounded-lg"
@@ -294,26 +294,26 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete, isAddingProfile = f
                 </div>
               </div>
 
-              <div className="space-y-1">
+              <div className="space-y-1 text-center">
                 <label className="block text-xs font-bold text-gray-500 mb-2 uppercase tracking-wide">Cycle Length (Days)</label>
                 <ScrollPicker 
                     items={cycleRange}
                     value={cycleLength}
                     onChange={setCycleLength}
-                    className="w-full"
+                    className="w-24 mx-auto"
                     height={90}
                     itemHeight={32}
                     highlightClass="neu-pressed rounded-lg"
                 />
               </div>
 
-              <div className="space-y-1">
+              <div className="space-y-1 text-center">
                 <label className="block text-xs font-bold text-gray-500 mb-2 uppercase tracking-wide">Period Duration (Days)</label>
                 <ScrollPicker 
                     items={durationRange}
                     value={periodDuration}
                     onChange={setPeriodDuration}
-                    className="w-full"
+                    className="w-24 mx-auto"
                     height={90}
                     itemHeight={32}
                     highlightClass="neu-pressed rounded-lg"

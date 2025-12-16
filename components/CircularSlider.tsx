@@ -1,4 +1,5 @@
 import React, { useRef, useState, useEffect } from 'react';
+import { triggerHaptic } from '../utils/haptics';
 
 interface CircularSliderProps {
   value: number; // 0 to 10
@@ -63,12 +64,17 @@ const CircularSlider: React.FC<CircularSliderProps> = ({
         }
     }
 
-    onChange(Math.round(newValue));
+    const rounded = Math.round(newValue);
+    if (rounded !== value) {
+        onChange(rounded);
+        triggerHaptic('light');
+    }
   };
 
   const handleStart = (clientX: number, clientY: number) => {
     setIsDragging(true);
     handleInteraction(clientX, clientY);
+    triggerHaptic('light');
   };
 
   const handleMouseDown = (e: React.MouseEvent) => handleStart(e.clientX, e.clientY);

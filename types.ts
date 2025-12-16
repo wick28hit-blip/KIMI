@@ -77,6 +77,7 @@ export interface AppState {
   cycle: CycleData | null;
   logs: Record<string, DailyLog>;
   darkMode: boolean;
+  hapticsEnabled: boolean;
 }
 
 export enum Colors {

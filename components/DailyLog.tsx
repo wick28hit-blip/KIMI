@@ -5,6 +5,7 @@ import {
 } from 'lucide-react';
 import { DailyLog as DailyLogType, SymptomEntry } from '../types';
 import { format } from 'date-fns';
+import { triggerHaptic } from '../utils/haptics';
 
 interface DailyLogProps {
   log: DailyLogType;
@@ -39,7 +40,13 @@ const DailyLog: React.FC<DailyLogProps> = ({ log, onSave, onClose }) => {
     onSave({ ...log, ...updates });
   };
 
+  const handleSaveAndClose = () => {
+    triggerHaptic('success');
+    onClose();
+  };
+
   const handleSymptomChange = (category: string, name: string, intensity: number) => {
+    triggerHaptic('light');
     const currentSymptoms = log.detailedSymptoms || [];
     // Remove existing if any
     const filtered = currentSymptoms.filter(s => s.name !== name);
@@ -66,7 +73,7 @@ const DailyLog: React.FC<DailyLogProps> = ({ log, onSave, onClose }) => {
       {/* Header */}
       <div className="px-6 pt-6 pb-2 flex items-center justify-between shrink-0">
         <div className="flex items-center gap-3">
-            <button onClick={onClose} className="p-2 rounded-full hover:bg-black/5 dark:hover:bg-white/10">
+            <button onClick={() => { onClose(); triggerHaptic('light'); }} className="p-2 rounded-full hover:bg-black/5 dark:hover:bg-white/10">
                 <ArrowLeft size={20} className="text-[#2D2D2D] dark:text-white" />
             </button>
             <div>
@@ -76,7 +83,7 @@ const DailyLog: React.FC<DailyLogProps> = ({ log, onSave, onClose }) => {
                 <span className="text-gray-400 text-sm font-medium">{format(new Date(log.date), 'MMM d')}</span>
             </div>
         </div>
-        <button onClick={onClose} className="text-[#E84C7C]"><Check size={24} /></button>
+        <button onClick={handleSaveAndClose} className="text-[#E84C7C]"><Check size={24} /></button>
       </div>
 
       {/* Content */}
@@ -96,6 +103,7 @@ const DailyLog: React.FC<DailyLogProps> = ({ log, onSave, onClose }) => {
                             const moods = log.mood || [];
                             const newMoods = moods.includes(m) ? moods.filter(x => x !== m) : [...moods, m];
                             updateLog({ mood: newMoods });
+                            triggerHaptic('light');
                         }}
                         className={`px-4 py-2 rounded-full text-sm border transition-all ${
                             (log.mood || []).includes(m)
@@ -120,7 +128,7 @@ const DailyLog: React.FC<DailyLogProps> = ({ log, onSave, onClose }) => {
                 return (
                     <div key={category} className="bg-white dark:bg-gray-800 rounded-xl overflow-hidden border border-pink-100 dark:border-gray-700 shadow-sm transition-colors">
                         <button 
-                            onClick={() => setExpandedCategory(isExpanded ? null : category)}
+                            onClick={() => { setExpandedCategory(isExpanded ? null : category); triggerHaptic('light'); }}
                             className="w-full p-4 flex items-center justify-between text-gray-800 dark:text-white"
                         >
                             <div className="flex items-center gap-3">
