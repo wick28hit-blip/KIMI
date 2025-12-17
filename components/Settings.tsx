@@ -1,5 +1,5 @@
 import React, { useRef, useState, useEffect } from 'react';
-import { Bell, Moon, Shield, Download, Upload, Trash2, ChevronRight, Lock, Sun, LogOut, UserPlus, Clock, ArrowLeft, X, Check, Calendar, Zap, Plus } from 'lucide-react';
+import { Bell, Moon, Shield, Download, Upload, Trash2, ChevronRight, Lock, Sun, LogOut, UserPlus, Clock, ArrowLeft, X, Check, Calendar, Zap, Plus, Smartphone } from 'lucide-react';
 import { UserProfile, ReminderConfig } from '../types';
 import ScrollPicker from './ScrollPicker';
 
@@ -188,11 +188,23 @@ const Settings: React.FC<SettingsProps> = ({
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [view, setView] = useState<'MAIN' | 'REMINDERS'>('MAIN');
   const [editingReminder, setEditingReminder] = useState<ReminderConfig | null>(null);
+  const [notifPermission, setNotifPermission] = useState<NotificationPermission>(
+    typeof Notification !== 'undefined' ? Notification.permission : 'default'
+  );
   
   const [reminders, setReminders] = useState<ReminderConfig[]>(() => {
       const saved = localStorage.getItem('KIMI_REMINDERS');
       return saved ? JSON.parse(saved) : DEFAULT_REMINDERS;
   });
+
+  // Migration Effect: Updates old labels in existing localStorage data to new names
+  useEffect(() => {
+    setReminders(prev => prev.map(r => {
+        if (r.id === '12' && r.label === 'Kegel exercise') return { ...r, label: 'Gym Workout' };
+        if (r.id === '13' && r.label === 'PMS relief flow') return { ...r, label: 'PMS relief YOGA' };
+        return r;
+    }));
+  }, []);
 
   useEffect(() => {
       localStorage.setItem('KIMI_REMINDERS', JSON.stringify(reminders));
@@ -243,6 +255,26 @@ const Settings: React.FC<SettingsProps> = ({
     const file = event.target.files?.[0];
     if (file) {
       onImport(file);
+    }
+  };
+  
+  const handleToggleNotifications = () => {
+    if (typeof Notification === 'undefined') {
+        alert("Notifications are not supported on this device.");
+        return;
+    }
+
+    if (notifPermission === 'granted') {
+        alert("To disable notifications, please change the permission in your device settings.");
+    } else if (notifPermission === 'denied') {
+        alert("Notifications are blocked. Please allow them in your device settings to receive reminders.");
+    } else {
+        Notification.requestPermission().then(permission => {
+            setNotifPermission(permission);
+            if (permission === 'granted') {
+                onTestNotification(); // Send a test to confirm
+            }
+        });
     }
   };
 
@@ -458,17 +490,18 @@ const Settings: React.FC<SettingsProps> = ({
             <div className="neu-flat p-4 mb-6">
                 <h3 className="font-semibold text-gray-800 dark:text-gray-100 mb-4 ml-1">Preferences</h3>
                 
-                <div 
+                {/* Notification Toggle */}
+                 <div 
                     className="flex items-center justify-between mb-6 cursor-pointer" 
-                    onClick={onToggleDarkMode}
+                    onClick={handleToggleNotifications}
                 >
                     <div className="flex items-center gap-3 text-gray-600 dark:text-gray-300">
-                        {isDarkMode ? <Sun size={18} /> : <Moon size={18} />}
-                        <span className="text-sm font-medium">{isDarkMode ? 'Light Mode' : 'Dark Mode'}</span>
+                        <Bell size={18} className={notifPermission === 'granted' ? 'text-blue-500' : 'text-gray-400'} />
+                        <span className="text-sm font-medium">Allow Notifications</span>
                     </div>
                     
                     <div className={`w-11 h-6 neu-pressed rounded-full relative transition-colors duration-300`}>
-                        <div className={`absolute top-1 w-4 h-4 rounded-full shadow-sm transition-all duration-300 ${isDarkMode ? 'left-6 bg-[#E84C7C] neu-flat' : 'left-1 bg-gray-400'}`} />
+                        <div className={`absolute top-1 w-4 h-4 rounded-full shadow-sm transition-all duration-300 ${notifPermission === 'granted' ? 'left-6 bg-[#E84C7C] neu-flat' : 'left-1 bg-gray-400'}`} />
                     </div>
                 </div>
 
@@ -487,10 +520,26 @@ const Settings: React.FC<SettingsProps> = ({
                         </div>
                     </div>
                 )}
+                
+                {/* Dark Mode */}
+                <div 
+                    className="flex items-center justify-between mb-6 cursor-pointer" 
+                    onClick={onToggleDarkMode}
+                >
+                    <div className="flex items-center gap-3 text-gray-600 dark:text-gray-300">
+                        {isDarkMode ? <Sun size={18} /> : <Moon size={18} />}
+                        <span className="text-sm font-medium">{isDarkMode ? 'Light Mode' : 'Dark Mode'}</span>
+                    </div>
+                    
+                    <div className={`w-11 h-6 neu-pressed rounded-full relative transition-colors duration-300`}>
+                        <div className={`absolute top-1 w-4 h-4 rounded-full shadow-sm transition-all duration-300 ${isDarkMode ? 'left-6 bg-[#E84C7C] neu-flat' : 'left-1 bg-gray-400'}`} />
+                    </div>
+                </div>
 
+                {/* Test Button */}
                 <div className="flex items-center justify-between mb-2">
                     <div className="flex items-center gap-3 text-gray-600 dark:text-gray-300">
-                        <Bell size={18} />
+                        <Smartphone size={18} />
                         <span className="text-sm font-medium">Test Notification</span>
                     </div>
                     <button 

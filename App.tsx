@@ -6,12 +6,12 @@ import LandingPage from './components/LandingPage';
 import PinLock from './components/PinLock';
 import BubbleDashboard from './components/BubbleDashboard';
 import Settings from './components/Settings';
-import MinePage from './components/MinePage';
 import SplashScreen from './components/SplashScreen';
 import DailyLogView from './components/DailyLog';
-import { Home, Calendar, PlusCircle, BarChart2, Activity, Settings as SettingsIcon, Smile, Plus, User, Droplet, Moon, Flame, Dumbbell, Sparkles } from 'lucide-react';
-import { format, startOfMonth, endOfMonth, eachDayOfInterval, isToday, addMonths, subMonths, subDays, parseISO } from 'date-fns';
-import { getDayStatus, calculateWaterTarget } from './utils/calculations';
+import MinePage from './components/MinePage';
+import { Home, Calendar, PlusCircle, BarChart2, Settings as SettingsIcon, Plus, User, Droplet, Moon, Dumbbell, Sparkles } from 'lucide-react';
+import { format, startOfMonth, endOfMonth, eachDayOfInterval, isToday, addMonths, subMonths, subDays } from 'date-fns';
+import { getDayStatus } from './utils/calculations';
 
 import { syncProfileToIDB, getLastNotification, logNotificationSent } from './utils/db';
 import { triggerLocalNotification, checkPeriodicNotifications, checkMoodTrigger } from './utils/scheduler';
@@ -35,15 +35,14 @@ export default function App() {
 
   const [currentDate, setCurrentDate] = useState(new Date());
   const [loginError, setLoginError] = useState(false);
-  const [showDeleteModal, setShowDeleteModal] = useState(false);
   
   // Legend Popup State
   const [legendPopup, setLegendPopup] = useState<{label: string, desc: string} | null>(null);
 
   useEffect(() => {
-    if ('Notification' in window && Notification.permission === 'default') {
-        Notification.requestPermission();
-    }
+    // Note: Notification permission request removed from here.
+    // iOS requires explicit user gesture (button click) to request permissions.
+    // This is now handled in Settings.tsx via the 'Allow Notifications' toggle.
 
     const registerPeriodicSync = async () => {
         if ('serviceWorker' in navigator) {
@@ -71,10 +70,15 @@ export default function App() {
 
   useEffect(() => {
     if (state.user && state.cycle && state.activeProfileId) {
+        // Fetch reminders from localStorage to sync with IDB for the scheduler
+        const remindersStr = localStorage.getItem('KIMI_REMINDERS');
+        const reminders = remindersStr ? JSON.parse(remindersStr) : [];
+
         const profileData: ProfileData = {
             user: state.user,
             cycle: state.cycle,
-            logs: state.logs
+            logs: state.logs,
+            reminders: reminders
         };
         syncProfileToIDB(profileData).catch(console.error);
     }
@@ -276,6 +280,7 @@ export default function App() {
   const handleReset = () => {
     localStorage.removeItem(STORAGE_KEY);
     localStorage.removeItem(HAS_ACCOUNT_KEY);
+    localStorage.removeItem('KIMI_REMINDERS'); // Also clear reminders
     Object.keys(localStorage).forEach(key => {
         if (key.startsWith(USER_KEY_PREFIX) || key.startsWith(LOGS_KEY_PREFIX) || key.startsWith(LEGACY_PROFILE_KEY_PREFIX)) {
             localStorage.removeItem(key);
@@ -394,7 +399,6 @@ export default function App() {
     localStorage.setItem(`${LOGS_KEY_PREFIX}${state.activeProfileId}`, encryptData(newLogs, pinToUse));
     
     setState(s => ({ ...s, profiles: newProfiles, logs: newLogs }));
-    // Note: Success haptic handled in DailyLog.tsx onSave calls for specific actions, or we can do it here
   };
 
   const handleExportData = () => {
@@ -686,288 +690,200 @@ export default function App() {
     const yogaH = Math.floor(yogaMinutes / 60);
     const yogaM = yogaMinutes % 60;
 
-    const last7Days = Array.from({length: 7}, (_, i) => {
-        const d = subDays(new Date(), 6 - i);
-        return format(d, 'yyyy-MM-dd');
-    });
-
-    const chartData = last7Days.map(date => {
-        const entry = state.logs[date];
-        return {
-            label: format(parseISO(date), 'EEE'),
-            water: entry?.waterIntake || 0,
-            sleep: entry?.sleepDuration ? entry.sleepDuration / 60 : 0
-        };
-    });
-
-    const sortedLogs = logs.sort((a, b) => b.date.localeCompare(a.date));
-    const historyGroups: { title: string; logs: DailyLog[] }[] = [];
-    
-    sortedLogs.forEach(log => {
-        const title = format(parseISO(log.date), 'MMMM yyyy');
-        let group = historyGroups.find(g => g.title === title);
-        if (!group) {
-            group = { title, logs: [] };
-            historyGroups.push(group);
-        }
-        group.logs.push(log);
-    });
-
     return (
-        <div className="p-6 h-full overflow-y-auto pb-32">
-            <h2 className="text-2xl font-bold text-[#2D2D2D] dark:text-white mb-6">Insights</h2>
-            
-            <div className="neu-flat p-5 mb-6">
-                <h3 className="font-bold text-gray-700 dark:text-gray-200 mb-4 flex items-center gap-2">
-                    <BarChart2 size={18} className="text-[#E84C7C]" /> 
-                    Weekly Trends
-                </h3>
-                
-                <div className="mb-6">
-                    <div className="flex items-center gap-2 mb-2 text-xs text-gray-500 font-bold uppercase tracking-wider">
-                        <Droplet size={12} className="text-blue-400" /> Hydration
-                    </div>
-                    <div className="flex items-end justify-between gap-2 h-24">
-                        {chartData.map((d, i) => (
-                            <div key={i} className="flex flex-col items-center flex-1 group">
-                                <div className="w-full neu-pressed rounded-md relative h-20 flex items-end overflow-hidden">
-                                    <div 
-                                        className="w-full bg-blue-400 transition-all duration-500"
-                                        style={{ height: `${Math.min(100, (d.water / 3000) * 100)}%` }} 
-                                    />
-                                </div>
-                                <span className="text-[10px] text-gray-400 mt-1">{d.label}</span>
-                            </div>
-                        ))}
-                    </div>
-                </div>
+      <div className="p-6 pb-32 h-full overflow-y-auto no-scrollbar">
+         <div className="flex items-center gap-4 mb-8 pt-4">
+             <button onClick={() => setState(s => ({...s, view: 'HOME'}))} className="neu-btn-round w-10 h-10">
+                 <Home size={20} />
+             </button>
+             <h2 className="text-2xl font-bold text-[#2D2D2D] dark:text-white">Insights</h2>
+         </div>
 
-                <div className="mt-8">
-                    <div className="flex items-center gap-2 mb-4 text-xs text-gray-500 font-bold uppercase tracking-wider">
-                        <Moon size={12} className="text-indigo-400" /> Sleep Cycle (Weekly)
-                    </div>
-                    
-                    <div className="grid grid-cols-7 gap-2 px-1">
-                        {chartData.map((d, i) => (
-                            <div key={i} className="flex flex-col items-center group cursor-pointer w-full" onClick={() => triggerHaptic('light')}>
-                                {/* Glass Pattern Bar */}
-                                <div className="w-full neu-pressed rounded-full relative h-24 flex items-end overflow-hidden">
-                                    <div 
-                                        className="w-full bg-gradient-to-t from-[#7E57C2] to-[#bcaaa4] opacity-80 transition-all duration-500"
-                                        style={{ height: `${Math.min(100, (d.sleep / 10) * 100)}%` }} 
-                                    />
-                                </div>
-                                <span className="text-[10px] text-gray-400 mt-2 font-bold">{d.label.charAt(0)}</span>
-                            </div>
-                        ))}
-                    </div>
-                </div>
-            </div>
+         {/* Stats Grid */}
+         <div className="grid grid-cols-2 gap-4 mb-8">
+             <div className="neu-flat p-4 flex flex-col justify-between h-32">
+                 <div className="flex items-start justify-between">
+                     <span className="text-xs font-bold text-gray-400 uppercase">Sleep Avg</span>
+                     <Moon size={16} className="text-indigo-400" />
+                 </div>
+                 <div>
+                     <span className="text-2xl font-bold text-gray-800 dark:text-white">{avgSleepH}h {avgSleepM}m</span>
+                 </div>
+             </div>
+             <div className="neu-flat p-4 flex flex-col justify-between h-32">
+                 <div className="flex items-start justify-between">
+                     <span className="text-xs font-bold text-gray-400 uppercase">Water Avg</span>
+                     <Droplet size={16} className="text-blue-400" />
+                 </div>
+                 <div>
+                     <span className="text-2xl font-bold text-gray-800 dark:text-white">{avgWater} ml</span>
+                 </div>
+             </div>
+             <div className="neu-flat p-4 flex flex-col justify-between h-32">
+                 <div className="flex items-start justify-between">
+                     <span className="text-xs font-bold text-gray-400 uppercase">Gym Total</span>
+                     <Dumbbell size={16} className="text-orange-400" />
+                 </div>
+                 <div>
+                     <span className="text-2xl font-bold text-gray-800 dark:text-white">{gymH}h {gymM}m</span>
+                 </div>
+             </div>
+             <div className="neu-flat p-4 flex flex-col justify-between h-32">
+                 <div className="flex items-start justify-between">
+                     <span className="text-xs font-bold text-gray-400 uppercase">Yoga Total</span>
+                     <Sparkles size={16} className="text-pink-400" />
+                 </div>
+                 <div>
+                     <span className="text-2xl font-bold text-gray-800 dark:text-white">{yogaH}h {yogaM}m</span>
+                 </div>
+             </div>
+         </div>
 
-            <div className="grid grid-cols-2 gap-4 mb-4">
-                <div className="neu-flat p-4 flex flex-col items-center justify-center text-center">
-                    <Droplet className="text-blue-400 mb-2" size={24} />
-                    <span className="text-xs text-gray-500 uppercase font-bold tracking-wider mb-1">Avg Hydration</span>
-                    <span className="text-xl font-bold text-gray-800 dark:text-white">{avgWater} ml</span>
-                </div>
-                <div className="neu-flat p-4 flex flex-col items-center justify-center text-center">
-                    <Moon className="text-indigo-400 mb-2" size={24} />
-                    <span className="text-xs text-gray-500 uppercase font-bold tracking-wider mb-1">Avg Sleep</span>
-                    <span className="text-xl font-bold text-gray-800 dark:text-white">{avgSleepH}h {avgSleepM}m</span>
-                </div>
-            </div>
+         {/* Mood Chart (Simple Bar) */}
+         <div className="neu-flat p-5 mb-8">
+             <h3 className="font-bold text-gray-800 dark:text-white mb-4">Top Moods</h3>
+             <div className="space-y-3">
+                 {topMoods.map(([mood, count], idx) => (
+                     <div key={mood} className="flex items-center gap-3">
+                         <span className="w-20 text-sm font-medium text-gray-600 dark:text-gray-300 truncate">{mood}</span>
+                         <div className="flex-1 h-2 bg-gray-100 dark:bg-gray-700 rounded-full overflow-hidden">
+                             <div 
+                                className="h-full bg-[#E84C7C] rounded-full" 
+                                style={{ width: `${(count / totalDays) * 100}%` }}
+                             ></div>
+                         </div>
+                         <span className="text-xs font-bold text-gray-400">{count}</span>
+                     </div>
+                 ))}
+                 {topMoods.length === 0 && <p className="text-sm text-gray-400 italic">No mood data yet.</p>}
+             </div>
+         </div>
 
-            <div className="grid grid-cols-2 gap-4 mb-6">
-                <div className="neu-flat p-4 flex flex-col items-center justify-center text-center">
-                    <Dumbbell className="text-orange-400 mb-2" size={24} />
-                    <span className="text-xs text-gray-500 uppercase font-bold tracking-wider mb-1">Gym</span>
-                    <span className="text-xl font-bold text-gray-800 dark:text-white">{gymH}h {gymM}m</span>
-                </div>
-                <div className="neu-flat p-4 flex flex-col items-center justify-center text-center">
-                    <Sparkles className="text-pink-400 mb-2" size={24} />
-                    <span className="text-xs text-gray-500 uppercase font-bold tracking-wider mb-1">Yoga</span>
-                    <span className="text-xl font-bold text-gray-800 dark:text-white">{yogaH}h {yogaM}m</span>
-                </div>
-            </div>
-
-            <div className="neu-flat p-6 mb-6">
-                <h3 className="font-semibold text-lg mb-4 dark:text-gray-200 flex items-center gap-2"><Smile className="text-orange-400" size={20} /> Mood Patterns</h3>
-                <div className="flex flex-wrap gap-2">
-                    {topMoods.length > 0 ? topMoods.map(([mood, count], i) => (
-                        <div key={mood} className={`px-3 py-1.5 rounded-full text-sm font-medium flex items-center gap-2 ${i === 0 ? 'neu-active' : 'neu-pressed text-gray-500'}`}>
-                            <span>{mood}</span>
-                            <span className="text-xs font-bold opacity-70">{count}</span>
-                        </div>
-                    )) : <p className="text-gray-400 text-sm italic">No mood data yet.</p>}
-                </div>
-            </div>
-
-            <div className="neu-flat p-6 mb-6">
-                <h3 className="font-semibold text-lg mb-4 dark:text-gray-200 flex items-center gap-2">
-                    <Activity className="text-purple-500" size={20} /> Symptoms
-                </h3>
-                
-                <div className="space-y-6">
-                    {Object.entries(symptomsByCategory).map(([category, items]) => {
-                        const entries = Object.entries(items).sort(([,a], [,b]) => b - a);
-                        if (entries.length === 0) return null;
-
-                        return (
-                            <div key={category}>
-                                <h4 className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-3 pl-2 border-l-2 border-purple-200">{category}</h4>
-                                <div className="space-y-3 pl-2">
-                                    {entries.map(([sym, count]) => (
-                                        <div key={sym} className="flex items-center justify-between">
-                                            <span className="text-gray-600 dark:text-gray-300 text-sm font-medium">{sym}</span>
-                                            <div className="flex items-center gap-2 flex-1 ml-4 justify-end">
-                                                <div className="w-24 h-2 neu-pressed rounded-full overflow-hidden">
-                                                    <div className="h-full bg-purple-400 rounded-full" style={{ width: `${(count / totalDays) * 100}%` }} />
-                                                </div>
-                                                <span className="text-xs text-gray-400 font-medium w-4 text-right">{count}</span>
-                                            </div>
-                                        </div>
-                                    ))}
-                                </div>
-                            </div>
-                        );
-                    })}
-                    {Object.values(symptomsByCategory).every(cat => Object.keys(cat).length === 0) && (
-                        <p className="text-gray-400 text-sm italic text-center py-2">No symptoms logged yet.</p>
-                    )}
-                </div>
-            </div>
-
-            <div className="mt-8">
-                <h3 className="font-bold text-gray-800 dark:text-white mb-4">Log History</h3>
-                {historyGroups.length > 0 ? historyGroups.map((group) => (
-                    <div key={group.title} className="mb-6">
-                        <h4 className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-3 pl-2 border-l-2 border-[#E84C7C]">{group.title}</h4>
-                        <div className="space-y-3">
-                            {group.logs.map(log => {
-                                const dayNum = format(parseISO(log.date), 'd');
-                                const dayName = format(parseISO(log.date), 'EEEE');
-                                const hasSymptoms = (log.detailedSymptoms?.length || 0) + (log.symptoms?.length || 0) > 0;
-                                const hasMood = (log.mood?.length || 0) > 0;
-                                
-                                return (
-                                    <div key={log.date} className="neu-flat p-3 flex items-center justify-between">
-                                        <div className="flex items-center gap-3">
-                                            <div className="flex flex-col items-center justify-center w-10 h-10 neu-pressed rounded-lg">
-                                                <span className="text-sm font-bold text-gray-800 dark:text-white">{dayNum}</span>
-                                            </div>
-                                            <div>
-                                                <span className="text-xs font-bold text-gray-500 block">{dayName}</span>
-                                                <div className="flex gap-1 mt-0.5">
-                                                    {log.flow && <span className="w-1.5 h-1.5 rounded-full bg-[#E84C7C]"></span>}
-                                                    {hasSymptoms && <span className="w-1.5 h-1.5 rounded-full bg-purple-400"></span>}
-                                                    {hasMood && <span className="w-1.5 h-1.5 rounded-full bg-orange-400"></span>}
-                                                </div>
-                                            </div>
-                                        </div>
-                                        <div className="text-right">
-                                            {log.flow && <span className="text-xs font-bold text-[#E84C7C] px-2 py-1">{log.flow}</span>}
-                                        </div>
-                                    </div>
-                                );
-                            })}
-                        </div>
-                    </div>
-                )) : (
-                    <p className="text-gray-400 text-sm text-center italic py-4">No history recorded yet.</p>
-                )}
-            </div>
-        </div>
+         {/* Symptoms Cloud */}
+         <div className="neu-flat p-5">
+             <h3 className="font-bold text-gray-800 dark:text-white mb-4">Common Symptoms</h3>
+             <div className="flex flex-wrap gap-2">
+                 {Object.entries(symptomsByCategory).map(([cat, symptoms]) => 
+                     Object.entries(symptoms).map(([name, count]) => (
+                         <span key={name} className="px-3 py-1 bg-white dark:bg-gray-700 border border-gray-100 dark:border-gray-600 rounded-full text-xs font-medium text-gray-600 dark:text-gray-300">
+                             {name} <span className="text-[#E84C7C] font-bold ml-1">{count}</span>
+                         </span>
+                     ))
+                 )}
+                 {Object.keys(symptomsByCategory).every(k => Object.keys(symptomsByCategory[k]).length === 0) && (
+                     <p className="text-sm text-gray-400 italic">No symptom data yet.</p>
+                 )}
+             </div>
+         </div>
+      </div>
     );
   };
 
-  const renderDailyLog = () => {
-    const today = format(new Date(), 'yyyy-MM-dd');
-    const waterTarget = state.user ? calculateWaterTarget(state.user.age || 25, state.user.pmsData.weight || 60) : 2000;
-    const log = state.logs[today] || { 
-        date: today, waterIntake: 0, waterTarget: waterTarget, sleepDuration: 0, sleepTarget: 480,
-        flow: null, symptoms: [], detailedSymptoms: [], mood: [], medication: false, didExercise: false, habits: { smoked: false, drank: false } 
-    };
-    return <DailyLogView log={log} onSave={saveLog} onClose={() => { setState(s => ({...s, view: 'HOME'})); triggerHaptic('light'); }} />;
-  };
-
-  const renderMine = () => {
-      const today = format(new Date(), 'yyyy-MM-dd');
-      const waterTarget = state.user ? calculateWaterTarget(state.user.age || 25, state.user.pmsData.weight || 60) : 2000;
-      const log = state.logs[today] || { 
-          date: today, waterIntake: 0, waterTarget: waterTarget, sleepDuration: 0, sleepTarget: 480,
-          flow: null, symptoms: [], detailedSymptoms: [], mood: [], medication: false, didExercise: false, habits: { smoked: false, drank: false } 
-      };
-      return <MinePage log={log} onSaveLog={saveLog} user={state.user} />;
-  };
-
-  return (
-    <div className={`max-w-md mx-auto h-[100dvh] relative shadow-2xl overflow-hidden flex flex-col transition-colors duration-300 bg-transparent`}>
-      <main className="flex-1 overflow-hidden relative">
-        {state.view === 'HOME' && renderHome()}
-        {state.view === 'CALENDAR' && renderCalendar()}
-        {state.view === 'DAILY_LOG' && renderDailyLog()}
-        {state.view === 'INSIGHTS' && renderInsights()}
-        {state.view === 'MINE' && renderMine()}
-        {state.view === 'LANDING' && <LandingPage onStartTracking={() => { setState(s => ({...s, view: 'ONBOARDING'})); triggerHaptic('medium'); }} />}
-        {state.view === 'ONBOARDING' && <Onboarding onComplete={handleCreateProfile} isAddingProfile={Object.keys(state.profiles).length > 0} onCancel={() => { setState(s => ({...s, view: 'HOME'})); triggerHaptic('light'); }} />}
-        {state.view === 'PIN' && <PinLock onSuccess={handleLogin} expectedPin={state.user?.pin} onReset={handleReset} loginError={loginError} onClearLoginError={() => setLoginError(false)} />}
-        {state.view === 'SETTINGS' && (
-            <Settings 
-                profiles={(Object.values(state.profiles) as ProfileData[]).map(p => p.user)}
+  const getMainContent = () => {
+    switch (state.view) {
+        case 'HOME': return renderHome();
+        case 'CALENDAR': return renderCalendar();
+        case 'INSIGHTS': return renderInsights();
+        case 'SETTINGS': 
+            return <Settings 
+                profiles={Object.values(state.profiles).map(p => p.user)} 
                 onDeleteProfile={handleDeleteProfile}
-                onExport={handleExportData}
-                onImport={handleImportData}
-                onDeleteData={() => { setShowDeleteModal(true); triggerHaptic('warning'); }}
+                onExport={handleExportData} 
+                onImport={handleImportData} 
+                onDeleteData={confirmDelete}
                 isDarkMode={state.darkMode}
                 onToggleDarkMode={toggleDarkMode}
                 onLogout={handleLogout}
-                onAddProfile={() => { setState(s => ({ ...s, view: 'ONBOARDING' })); triggerHaptic('medium'); }}
+                onAddProfile={() => setState(s => ({...s, view: 'ONBOARDING'}))}
                 onTestNotification={handleTestNotification}
-                onClose={() => { setState(s => ({...s, view: 'HOME'})); triggerHaptic('light'); }}
+                onClose={() => setState(s => ({...s, view: 'HOME'}))}
                 isHapticsEnabled={state.hapticsEnabled}
                 onToggleHaptics={toggleHaptics}
+            />;
+        case 'MINE':
+            const todayKey = format(currentDate, 'yyyy-MM-dd');
+            return <MinePage 
+                log={state.logs[todayKey] || { 
+                    date: todayKey, 
+                    waterIntake: 0, waterTarget: 2000, 
+                    sleepDuration: 0, sleepTarget: 480, 
+                    detailedSymptoms: [], mood: [], symptoms: [], 
+                    medication: false, didExercise: false, habits: { smoked: false, drank: false } 
+                }}
+                user={state.user}
+                onSaveLog={saveLog}
+            />;
+        case 'DAILY_LOG':
+            // Logic handled in overlay
+            return renderHome(); 
+        default: return renderHome();
+    }
+  };
+
+  return (
+    <div className={`h-full flex flex-col bg-[#FFF0F3] dark:bg-gray-900 transition-colors duration-500`}>
+        {state.view === 'ONBOARDING' ? (
+            <Onboarding 
+                onComplete={handleCreateProfile} 
+                isAddingProfile={!!state.user}
+                onCancel={state.user ? () => setState(s => ({...s, view: 'HOME'})) : undefined}
             />
+        ) : state.view === 'PIN' ? (
+            <PinLock 
+                expectedPin={state.user?.pin} 
+                onSuccess={handleLogin} 
+                onReset={handleReset}
+                loginError={loginError}
+                onClearLoginError={() => setLoginError(false)}
+            />
+        ) : state.view === 'LANDING' ? (
+            <LandingPage onStartTracking={() => setState(s => ({...s, view: 'ONBOARDING'}))} />
+        ) : (
+            <>
+                <main className="flex-1 overflow-hidden relative">
+                    {getMainContent()}
+                </main>
+
+                {state.view !== 'SETTINGS' && state.view !== 'DAILY_LOG' && (
+                    <nav className="shrink-0 h-24 pb-6 bg-[#FFF0F3]/90 dark:bg-gray-900/90 backdrop-blur-md flex justify-around items-center px-6 absolute bottom-0 w-full z-40">
+                        <button onClick={() => { setState(s => ({...s, view: 'HOME'})); triggerHaptic('light'); }} className={`p-2 transition-colors ${state.view === 'HOME' ? 'text-[#E84C7C]' : 'text-gray-400'}`}>
+                            <Home size={24} />
+                        </button>
+                        <button onClick={() => { setState(s => ({...s, view: 'CALENDAR'})); triggerHaptic('light'); }} className={`p-2 transition-colors ${state.view === 'CALENDAR' ? 'text-[#E84C7C]' : 'text-gray-400'}`}>
+                            <Calendar size={24} />
+                        </button>
+                        <button 
+                            onClick={() => { setState(s => ({...s, view: 'DAILY_LOG'})); triggerHaptic('medium'); }}
+                            className="neu-btn-round w-14 h-14 -mt-8 text-[#E84C7C] shadow-xl"
+                        >
+                            <PlusCircle size={32} />
+                        </button>
+                        <button onClick={() => { setState(s => ({...s, view: 'INSIGHTS'})); triggerHaptic('light'); }} className={`p-2 transition-colors ${state.view === 'INSIGHTS' ? 'text-[#E84C7C]' : 'text-gray-400'}`}>
+                            <BarChart2 size={24} />
+                        </button>
+                        <button onClick={() => { setState(s => ({...s, view: 'MINE'})); triggerHaptic('light'); }} className={`p-2 transition-colors ${state.view === 'MINE' ? 'text-[#E84C7C]' : 'text-gray-400'}`}>
+                            <User size={24} />
+                        </button>
+                    </nav>
+                )}
+
+                {state.view === 'DAILY_LOG' && (
+                    <div className="absolute inset-0 z-50 animate-in slide-in-from-bottom duration-300">
+                        <DailyLogView 
+                            log={state.logs[format(currentDate, 'yyyy-MM-dd')] || { 
+                                date: format(currentDate, 'yyyy-MM-dd'), 
+                                waterIntake: 0, waterTarget: 2000, 
+                                sleepDuration: 0, sleepTarget: 480, 
+                                detailedSymptoms: [], mood: [], symptoms: [], 
+                                medication: false, didExercise: false, habits: { smoked: false, drank: false } 
+                            }}
+                            onSave={saveLog}
+                            onClose={() => setState(s => ({...s, view: 'HOME'}))}
+                        />
+                    </div>
+                )}
+            </>
         )}
-      </main>
-
-      {showDeleteModal && (
-        <div className="absolute inset-0 z-[60] flex items-center justify-center bg-black/50 p-6 animate-in fade-in duration-200">
-          <div className="neu-flat p-6 w-full max-w-sm">
-             <div className="w-12 h-12 rounded-full neu-pressed flex items-center justify-center mx-auto mb-4 text-red-500"><Activity size={24} className="rotate-45" /></div>
-             <h3 className="text-xl font-bold text-center text-gray-800 dark:text-white mb-2">Delete All Data?</h3>
-             <p className="text-center text-gray-500 dark:text-gray-400 mb-6 text-sm">This action cannot be undone.</p>
-             <div className="flex flex-col gap-3">
-                 <button onClick={handleExportData} className="neu-btn w-full py-3">Export Backup</button>
-                 <button onClick={confirmDelete} className="neu-btn w-full py-3 text-red-500 border-red-200">Yes, Delete</button>
-                 <button onClick={() => { setShowDeleteModal(false); triggerHaptic('light'); }} className="w-full py-3 text-gray-500 font-medium">Cancel</button>
-             </div>
-          </div>
-        </div>
-      )}
-
-      {(state.view !== 'LANDING' && state.view !== 'ONBOARDING' && state.view !== 'PIN') && (
-        <>
-          <nav className="absolute bottom-0 left-0 w-full neu-flat rounded-none rounded-t-3xl flex justify-between px-2 py-3 pb-[calc(1.5rem+env(safe-area-inset-bottom))] z-50 border-t-0">
-            {[{view: 'HOME', icon: Home, label: 'Home'}, {view: 'CALENDAR', icon: Calendar, label: 'Calendar'}, {view: 'INSIGHTS', icon: BarChart2, label: 'Insights'}, {view: 'MINE', icon: User, label: 'Self Care'}].map(item => (
-                <React.Fragment key={item.view}>
-                    {item.view === 'INSIGHTS' && <div className="w-16" />}
-                    <button onClick={() => { setState(s => ({...s, view: item.view as any})); triggerHaptic('light'); }} className={`flex-1 flex flex-col items-center gap-1 ${state.view === item.view ? 'text-[#E84C7C]' : 'text-gray-400'}`}>
-                        {state.view === item.view ? 
-                            <div className="neu-active p-2 rounded-xl"><item.icon size={20} /></div> : 
-                            <item.icon size={20} />
-                        }
-                        <span className="text-[10px] font-medium">{item.label}</span>
-                    </button>
-                </React.Fragment>
-            ))}
-          </nav>
-          <div className="absolute bottom-[calc(2.5rem+env(safe-area-inset-bottom))] left-1/2 -translate-x-1/2 z-50">
-            <button onClick={() => { setState(s => ({...s, view: 'DAILY_LOG'})); triggerHaptic('medium'); }} className={`neu-btn-round w-16 h-16 bg-[#E84C7C] text-[#E84C7C] border-4 border-[#FFF0F3]`}>
-              <PlusCircle size={32} />
-            </button>
-          </div>
-        </>
-      )}
     </div>
   );
 }
