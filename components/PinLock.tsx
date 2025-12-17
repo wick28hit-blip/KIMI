@@ -116,7 +116,9 @@ const PinLock: React.FC<PinLockProps> = ({
             key={i}
             className={`w-4 h-4 rounded-full transition-all duration-300 ${
               i < pin.length 
-                ? isError ? 'bg-red-500 shadow-md' : 'neu-active bg-[#E84C7C] scale-110' 
+                ? isError 
+                  ? 'bg-red-500 shadow-[0_0_10px_rgba(239,68,68,0.5)] scale-110' 
+                  : 'bg-[#E84C7C] shadow-[0_0_12px_rgba(232,76,124,0.6)] scale-110 border-2 border-[#FFF0F3]' 
                 : 'neu-pressed'
             }`}
           />
@@ -129,7 +131,7 @@ const PinLock: React.FC<PinLockProps> = ({
           <button
             key={num}
             onClick={() => handleNumClick(num)}
-            className="neu-btn-round w-16 h-16 text-2xl font-semibold"
+            className="neu-btn-round w-16 h-16 text-2xl font-semibold hover:text-[#E84C7C] transition-colors"
           >
             {num}
           </button>
@@ -137,7 +139,7 @@ const PinLock: React.FC<PinLockProps> = ({
         <div /> {/* Spacer */}
         <button
           onClick={() => handleNumClick(0)}
-          className="neu-btn-round w-16 h-16 text-2xl font-semibold"
+          className="neu-btn-round w-16 h-16 text-2xl font-semibold hover:text-[#E84C7C] transition-colors"
         >
           0
         </button>

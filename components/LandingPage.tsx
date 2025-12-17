@@ -37,10 +37,12 @@ const LandingPage: React.FC<LandingPageProps> = ({ onStartTracking }) => {
         <div className="flex flex-col gap-4 mb-12 animate-in fade-in slide-in-from-bottom-4 duration-700 delay-200">
           <button 
             onClick={onStartTracking}
-            className="neu-btn w-full py-4 text-lg text-[#E84C7C] hover:text-[#D63E6D] transition-all active:scale-95"
+            className="neu-btn w-full py-4 text-lg transition-all active:scale-95 flex items-center justify-center gap-3 group"
           >
-            Start Tracking Free
-            <ArrowRight size={20} className="ml-2" />
+            <span className="font-bold bg-gradient-to-r from-[#E84C7C] to-purple-500 bg-clip-text text-transparent">
+              Start Tracking Free
+            </span>
+            <ArrowRight size={24} className="text-purple-500 group-hover:translate-x-1 transition-transform" />
           </button>
           <button className="neu-flat w-full py-4 text-gray-500 dark:text-gray-400 font-bold text-lg transition-all active:scale-95 hover:text-[#E84C7C]">
             Learn More

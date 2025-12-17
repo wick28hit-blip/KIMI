@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { format, differenceInDays } from 'date-fns';
 import { calculateCycle, getDayStatus, getContextAwareHealthTip } from '../utils/calculations';
 import { CycleData, UserProfile, DailyLog } from '../types';
-import { Activity, AlertCircle, X, Info, Sparkles, Moon, Sun, Star, Coffee, Droplet, Heart, Wind, Flame, EyeOff } from 'lucide-react';
+import { Activity, AlertCircle, X, Info, Sparkles, Moon, Sun, Star, Coffee, Droplet, Heart, Wind, Flame, EyeOff, TrendingUp } from 'lucide-react';
 
 interface DashboardProps {
   cycleData: CycleData;
@@ -57,6 +57,48 @@ const BubbleDashboard: React.FC<DashboardProps> = ({ cycleData, user, dailyLog }
   const tip = getContextAwareHealthTip(dailyLog, status, currentCycleDay);
   const TipIcon = ICON_MAP[tip.icon] || Sparkles;
 
+  // Analyze specific risk factors for display
+  // Updated Logic: Be more sensitive (>= 4) to capture moderate factors that contribute cumulatively
+  const getRiskFactors = () => {
+      if (!user?.pmsData) return [];
+      const pms = user.pmsData;
+      
+      const allFactors = [
+        { label: 'Stress Levels', impact: 'Cortisol delays ovulation', score: pms.stress },
+        { label: 'Sleep Quality', impact: 'Hormonal imbalance', score: pms.sleep },
+        { label: 'Anxiety', impact: 'Cycle irregularity', score: pms.anxiety },
+        { label: 'Mood/Depression', impact: 'Luteal phase disruption', score: pms.depression },
+        // BMI is a calculated metric; treat <3 (underweight) or >7 (overweight) as factors on 0-10 normalized scale
+        { label: 'BMI Factor', impact: 'Metabolic stress on cycle', score: (pms.bmi > 7 || pms.bmi < 3) ? pms.bmi : 0 }
+      ];
+
+      // Filter for anything Moderate (4+) or higher
+      // Sort by severity (highest score first)
+      const validFactors = allFactors
+        .filter(f => f.score >= 4)
+        .sort((a, b) => b.score - a.score);
+        
+      return validFactors;
+  };
+
+  const riskFactors = getRiskFactors();
+  
+  // Dynamic Explanation Text
+  const getExplanation = () => {
+      if (!calc.pmsAnalysis) return "Cycle variations are normal.";
+      
+      if (riskFactors.length > 0) {
+          const topFactor = riskFactors[0];
+          return `Your elevated ${topFactor.label.toLowerCase()} (rated ${topFactor.score}/10) is likely the primary driver. ${topFactor.impact}. Combined with other factors, this can push your period start date later.`;
+      }
+      
+      if (calc.pmsAnalysis.severity !== 'Low') {
+          return "While individual factors seem moderate, their combined effect on your HPO axis creates a cumulative delay risk.";
+      }
+
+      return "Your lifestyle factors are currently balanced. Keep maintaining good sleep and low stress.";
+  };
+
   return (
     <div className="flex flex-col items-center w-full mt-2 relative">
         
@@ -77,7 +119,7 @@ const BubbleDashboard: React.FC<DashboardProps> = ({ cycleData, user, dailyLog }
                       cx={size / 2}
                       cy={size / 2}
                     />
-                     {/* Background Track - Neumorphic Inset approximation via stroke color matching bg but we use a faint line here */}
+                     {/* Background Track */}
                     <circle
                       stroke="#f3e6e9"
                       strokeWidth={strokeWidth}
@@ -189,7 +231,7 @@ const BubbleDashboard: React.FC<DashboardProps> = ({ cycleData, user, dailyLog }
                 onClick={() => setShowRiskDetails(false)}
             >
                 <div 
-                    className="neu-flat p-6 w-full max-w-sm animate-in zoom-in-95 duration-200" 
+                    className="neu-flat p-6 w-full max-w-sm animate-in zoom-in-95 duration-200 bg-white dark:bg-gray-800" 
                     onClick={e => e.stopPropagation()}
                 >
                     <div className="flex justify-between items-start mb-4">
@@ -200,15 +242,40 @@ const BubbleDashboard: React.FC<DashboardProps> = ({ cycleData, user, dailyLog }
                                     {calc.pmsAnalysis?.severity} Risk
                                 </span>
                             </h3>
-                            <p className="text-xs text-gray-500 dark:text-gray-400">Factors contributing to cycle delay</p>
+                            <p className="text-xs text-gray-500 dark:text-gray-400">Factors contributing to cycle delay (+{calc.impactDelay} days)</p>
                         </div>
                         <button onClick={() => setShowRiskDetails(false)} className="neu-btn-round w-8 h-8">
                             <X size={16} />
                         </button>
                     </div>
 
-                    <div className="text-sm text-gray-600 dark:text-gray-300 mb-5 leading-relaxed neu-pressed p-3">
-                        Based on your inputs, we calculated a weighted risk score. Elevated stress, anxiety, or sleep issues can disrupt hormonal balance, potentially delaying your period by <strong>{calc.impactDelay} days</strong>.
+                    <div className="mb-6 space-y-3 max-h-[200px] overflow-y-auto no-scrollbar">
+                        {riskFactors.length > 0 ? (
+                            riskFactors.map((factor, idx) => (
+                                <div key={idx} className="flex items-start gap-3 p-3 neu-pressed rounded-xl">
+                                    <div className="mt-1">
+                                        <TrendingUp size={16} className="text-[#E84C7C]" />
+                                    </div>
+                                    <div>
+                                        <h4 className="text-sm font-bold text-gray-700 dark:text-gray-200">{factor.label}</h4>
+                                        <p className="text-xs text-gray-500 dark:text-gray-400">{factor.impact}</p>
+                                    </div>
+                                    <div className="ml-auto font-bold text-xs text-gray-400">
+                                        {factor.score}/10
+                                    </div>
+                                </div>
+                            ))
+                        ) : (
+                            <p className="text-sm text-gray-500 italic p-2">
+                                {calc.pmsAnalysis?.severity === 'Low' 
+                                    ? "No significant risk factors found."
+                                    : "Cumulative effect of moderate lifestyle factors detected."}
+                            </p>
+                        )}
+                    </div>
+
+                    <div className="text-xs text-gray-600 dark:text-gray-300 leading-relaxed bg-pink-50 dark:bg-pink-900/20 p-3 rounded-xl">
+                        <strong>Why is it delayed?</strong> {getExplanation()}
                     </div>
                 </div>
             </div>

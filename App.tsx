@@ -36,6 +36,9 @@ export default function App() {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [loginError, setLoginError] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
+  
+  // Legend Popup State
+  const [legendPopup, setLegendPopup] = useState<{label: string, desc: string} | null>(null);
 
   useEffect(() => {
     if ('Notification' in window && Notification.permission === 'default') {
@@ -491,6 +494,16 @@ export default function App() {
       triggerHaptic('medium');
   };
 
+  const showLegendInfo = (type: 'period' | 'ovulation' | 'fertile') => {
+      let info = { label: '', desc: '' };
+      if (type === 'period') info = { label: 'Period', desc: 'Days of menstruation.' };
+      if (type === 'ovulation') info = { label: 'Ovulation', desc: 'The day the egg is released. Peak fertility.' };
+      if (type === 'fertile') info = { label: 'Fertile Window', desc: 'Days with high chance of pregnancy.' };
+      setLegendPopup(info);
+      triggerHaptic('light');
+      setTimeout(() => setLegendPopup(null), 3000);
+  };
+
   // --- RENDERERS ---
 
   if (state.view === 'SPLASH') return <SplashScreen onComplete={handleSplashComplete} />;
@@ -503,7 +516,7 @@ export default function App() {
     const weekDays = ['S','M','T','W','T','F','S'];
 
     return (
-      <div className="p-4 pt-10 h-full overflow-y-auto pb-32">
+      <div className="p-4 pt-10 h-full overflow-y-auto pb-32 relative">
         <div className="flex justify-between items-center mb-6">
            <button onClick={() => { setCurrentDate(subMonths(currentDate, 1)); triggerHaptic('light'); }} className="neu-btn-round w-10 h-10">&lt;</button>
            <h2 className="text-xl font-bold text-[#2D2D2D] dark:text-white">{format(currentDate, 'MMMM yyyy')}</h2>
@@ -540,20 +553,38 @@ export default function App() {
             </div>
         </div>
         
-        <div className="flex flex-wrap justify-center gap-4 mt-8 px-4">
-           <div className="flex items-center gap-2">
-              <div className="w-3 h-3 rounded-full bg-[#E84C7C]"></div>
-              <span className="text-xs font-medium text-gray-500">Period</span>
-           </div>
-           <div className="flex items-center gap-2">
-              <div className="w-3 h-3 rounded-full bg-[#7B86CB]"></div>
-              <span className="text-xs font-medium text-gray-500">Ovulation</span>
-           </div>
-           <div className="flex items-center gap-2">
-              <div className="w-3 h-3 rounded-full bg-pink-100 border border-[#E84C7C]"></div>
-              <span className="text-xs font-medium text-gray-500">Fertile</span>
-           </div>
+        <div className="flex flex-wrap justify-center gap-3 mt-8 px-4">
+           <button 
+             onClick={() => showLegendInfo('period')} 
+             className="flex items-center gap-2 px-3 py-2 rounded-xl hover:bg-white/50 dark:hover:bg-white/5 active:scale-95 transition-all"
+           >
+              <div className="w-3 h-3 rounded-full bg-[#E84C7C] shadow-sm"></div>
+              <span className="text-xs font-bold text-gray-600 dark:text-gray-300">Period</span>
+           </button>
+           
+           <button 
+             onClick={() => showLegendInfo('ovulation')} 
+             className="flex items-center gap-2 px-3 py-2 rounded-xl hover:bg-white/50 dark:hover:bg-white/5 active:scale-95 transition-all"
+           >
+              <div className="w-3 h-3 rounded-full bg-[#7B86CB] shadow-sm"></div>
+              <span className="text-xs font-bold text-gray-600 dark:text-gray-300">Ovulation</span>
+           </button>
+           
+           <button 
+             onClick={() => showLegendInfo('fertile')} 
+             className="flex items-center gap-2 px-3 py-2 rounded-xl hover:bg-white/50 dark:hover:bg-white/5 active:scale-95 transition-all"
+           >
+              <div className="w-3 h-3 rounded-full bg-pink-100 border border-[#E84C7C] shadow-sm"></div>
+              <span className="text-xs font-bold text-gray-600 dark:text-gray-300">Fertile</span>
+           </button>
         </div>
+
+        {legendPopup && (
+            <div className="absolute bottom-24 left-1/2 -translate-x-1/2 bg-gray-800/90 backdrop-blur-md text-white px-5 py-3 rounded-2xl shadow-xl z-50 animate-in fade-in slide-in-from-bottom-2 duration-200 text-center min-w-[200px]">
+                <p className="text-sm font-bold mb-0.5">{legendPopup.label}</p>
+                <p className="text-xs opacity-90 leading-relaxed">{legendPopup.desc}</p>
+            </div>
+        )}
       </div>
     );
   };
@@ -596,11 +627,6 @@ export default function App() {
   };
 
   const renderInsights = () => {
-    // ... (Keep existing implementation logic)
-    // For brevity, using the same implementation structure, but assuming `renderInsights` content is large.
-    // I will include the full existing implementation but just adding haptic triggers if any interaction exists.
-    // Insights view is mostly read-only, so no major haptic changes needed here unless we add interactions.
-    // Copying existing implementation below:
     const logs = Object.values(state.logs) as DailyLog[];
     const totalDays = logs.length;
     
@@ -716,20 +742,22 @@ export default function App() {
                     </div>
                 </div>
 
-                <div>
-                    <div className="flex items-center gap-2 mb-2 text-xs text-gray-500 font-bold uppercase tracking-wider">
-                        <Moon size={12} className="text-indigo-400" /> Sleep
+                <div className="mt-8">
+                    <div className="flex items-center gap-2 mb-4 text-xs text-gray-500 font-bold uppercase tracking-wider">
+                        <Moon size={12} className="text-indigo-400" /> Sleep Cycle (Weekly)
                     </div>
-                    <div className="flex items-end justify-between gap-2 h-24">
+                    
+                    <div className="grid grid-cols-7 gap-2 px-1">
                         {chartData.map((d, i) => (
-                            <div key={i} className="flex flex-col items-center flex-1 group">
-                                <div className="w-full neu-pressed rounded-md relative h-20 flex items-end overflow-hidden">
+                            <div key={i} className="flex flex-col items-center group cursor-pointer w-full" onClick={() => triggerHaptic('light')}>
+                                {/* Glass Pattern Bar */}
+                                <div className="w-full neu-pressed rounded-full relative h-24 flex items-end overflow-hidden">
                                     <div 
-                                        className="w-full bg-indigo-400 transition-all duration-500"
-                                        style={{ height: `${Math.min(100, (d.sleep / 12) * 100)}%` }} 
+                                        className="w-full bg-gradient-to-t from-[#7E57C2] to-[#bcaaa4] opacity-80 transition-all duration-500"
+                                        style={{ height: `${Math.min(100, (d.sleep / 10) * 100)}%` }} 
                                     />
                                 </div>
-                                <span className="text-[10px] text-gray-400 mt-1">{d.label}</span>
+                                <span className="text-[10px] text-gray-400 mt-2 font-bold">{d.label.charAt(0)}</span>
                             </div>
                         ))}
                     </div>
@@ -920,7 +948,7 @@ export default function App() {
       {(state.view !== 'LANDING' && state.view !== 'ONBOARDING' && state.view !== 'PIN') && (
         <>
           <nav className="absolute bottom-0 left-0 w-full neu-flat rounded-none rounded-t-3xl flex justify-between px-2 py-3 pb-[calc(1.5rem+env(safe-area-inset-bottom))] z-50 border-t-0">
-            {[{view: 'HOME', icon: Home, label: 'Home'}, {view: 'CALENDAR', icon: Calendar, label: 'Calendar'}, {view: 'INSIGHTS', icon: BarChart2, label: 'Insights'}, {view: 'MINE', icon: User, label: 'Mine'}].map(item => (
+            {[{view: 'HOME', icon: Home, label: 'Home'}, {view: 'CALENDAR', icon: Calendar, label: 'Calendar'}, {view: 'INSIGHTS', icon: BarChart2, label: 'Insights'}, {view: 'MINE', icon: User, label: 'Self Care'}].map(item => (
                 <React.Fragment key={item.view}>
                     {item.view === 'INSIGHTS' && <div className="w-16" />}
                     <button onClick={() => { setState(s => ({...s, view: item.view as any})); triggerHaptic('light'); }} className={`flex-1 flex flex-col items-center gap-1 ${state.view === item.view ? 'text-[#E84C7C]' : 'text-gray-400'}`}>
