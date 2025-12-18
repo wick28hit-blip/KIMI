@@ -9,16 +9,17 @@
 :root {
   --primary-pink: #E84C7C;
 
-  /* Enhanced 3D shadow tones (Light Mode) */
-  /* Dense, high-contrast shadows for "Cube" look */
-  --shadow-light: rgba(255, 255, 255, 1);
-  --shadow-dark: rgba(166, 118, 135, 0.6); /* Significantly denser/darker */
+  /* Remove chalky whites */
+  --shadow-light: rgba(255, 255, 255, 0.25);
+  --shadow-dark: rgba(163, 113, 129, 0.42);
+  --shadow-contact: rgba(120, 70, 90, 0.24);
 }
 
 body.dark {
   /* Enhanced 3D shadow tones (Dark Mode) */
-  --shadow-light: rgba(255, 255, 255, 0.08);
-  --shadow-dark: rgba(0, 0, 0, 0.95);
+  --shadow-light: rgba(255, 255, 255, 0.04);
+  --shadow-dark: rgba(0, 0, 0, 0.8);
+  --shadow-contact: rgba(0, 0, 0, 0.9);
   
   background: #111827;
   color: #F3F4F6;
@@ -28,12 +29,17 @@ body.dark {
    BASE STYLES
    =============================== */
 
+html, body {
+  overscroll-behavior: none;
+  overflow: hidden;
+  height: 100%;
+}
+
 body {
   font-family: 'Quicksand', sans-serif;
-  background: linear-gradient(145deg, #FFF8FA 0%, #F4D6DF 100%);
+  background: linear-gradient(145deg, #FFF0F5 0%, #F4D6DF 100%);
   color: #5D5D5D;
-  min-height: 100vh;
-  overscroll-behavior: none;
+  min-height: 100dvh;
 }
 
 /* ===============================
@@ -43,187 +49,165 @@ body {
 
 @layer utilities {
 
-  /* Raised Card / Surface - 3D CUBE LOOK */
-  .neu-flat {
-    @apply relative;
-    background: linear-gradient(145deg, #FFF4F7 0%, #F4D6DF 100%);
-    border-radius: 1.5rem;
-    
-    /* Directional Borders for "Cube" Thickness */
-    border-top: 1px solid rgba(255, 255, 255, 0.95);
-    border-left: 1px solid rgba(255, 255, 255, 0.95);
-    /* Thicker dark borders on bottom/right simulate physical height */
-    border-bottom: 2px solid rgba(166, 118, 135, 0.2); 
-    border-right: 2px solid rgba(166, 118, 135, 0.2);
+  /* Raised Card / Surface - MOLDED FAT 3D LOOK WITH CONTACT SHADOW */
+.neu-flat {
+  @apply relative;
+  background: linear-gradient(145deg, #FFF5F8 0%, #F3CBD8 100%);
+  border-radius: 2rem;
+  border: none;
 
-    /* Dense, Deep Shadows */
-    box-shadow:
-      12px 12px 30px var(--shadow-dark),
-      -10px -10px 24px var(--shadow-light),
-      inset 0 0 0 1px rgba(255,255,255,0.1); /* Subtle inner rim */
-  }
+  box-shadow:
+    /* 1. Tight contact shadow (edge separation) */
+    2px 3px 4px var(--shadow-contact),
+
+    /* 2. Main body depth (down only) */
+    14px 18px 28px var(--shadow-dark),
+
+    /* 3. Subtle inner rim (NOT white glow) */
+    inset 1px 1px 2px rgba(255, 255, 255, 0.35),
+        /* 4. DEPTH EDGE (BOTTOM-RIGHT THICKNESS) */
+    inset -4px -6px 8px rgba(140, 80, 100, 0.45);
+}
+
+
+
 
   body.dark .neu-flat {
     background: #1F2937;
-    border-top: 1px solid rgba(255,255,255,0.1);
-    border-left: 1px solid rgba(255,255,255,0.1);
-    border-bottom: 2px solid rgba(0,0,0,0.5);
-    border-right: 2px solid rgba(0,0,0,0.5);
     box-shadow: 
-      12px 12px 32px var(--shadow-dark),
-      -6px -6px 16px var(--shadow-light);
+      6px 6px 12px var(--shadow-contact),
+      20px 20px 40px var(--shadow-dark),
+      -12px -12px 30px var(--shadow-light),
+      inset 1px 1px 2px rgba(255,255,255,0.05),
+      inset -1px -1px 2px rgba(0,0,0,0.5);
   }
 
-  /* Inset / Input / Selected - DEEP CUT */
+  /* Inset / Input / Selected - DEEP MOLDED INSET */
   .neu-pressed {
     @apply relative;
-    background: linear-gradient(145deg, #F4D6DF 0%, #FFF4F7 100%);
-    border-radius: 1rem;
+    background: linear-gradient(145deg, #F0CCD7 0%, #FFF5F8 100%);
+    border-radius: 1.5rem;
+    border: none;
     
-    /* Deep Inset Shadows */
+    /* Deep Inset Shadows ~18px */
     box-shadow:
-      inset 8px 8px 16px var(--shadow-dark),
-      inset -8px -8px 16px var(--shadow-light);
-    
-    /* Reverse border logic for inset */
-    border-top: 1px solid rgba(166, 118, 135, 0.1);
-    border-left: 1px solid rgba(166, 118, 135, 0.1);
-    border-bottom: 1px solid rgba(255, 255, 255, 0.5);
-    border-right: 1px solid rgba(255, 255, 255, 0.5);
+      inset 18px 18px 36px var(--shadow-dark),
+      inset -18px -18px 36px var(--shadow-light);
   }
 
   body.dark .neu-pressed {
     background: #111827;
     box-shadow:
-      inset 6px 8px 18px rgba(0,0,0,0.95),
-      inset -3px -3px 8px rgba(255,255,255,0.05);
-    border: none;
+      inset 18px 18px 36px rgba(0,0,0,0.9),
+      inset -8px -8px 20px rgba(255,255,255,0.03);
   }
 
-  /* Primary Rectangular Button - TACTILE SLAB */
-  .neu-btn {
-    @apply relative overflow-hidden;
-    background: linear-gradient(145deg, #FFFFFF 0%, #EFDce3 100%);
-    border-radius: 1rem;
-    font-weight: 700;
-    color: var(--primary-pink);
-    
-    /* Pronounced 3D Borders */
-    border-top: 1px solid rgba(255, 255, 255, 0.9);
-    border-left: 1px solid rgba(255, 255, 255, 0.9);
-    border-bottom: 3px solid rgba(166, 118, 135, 0.25); /* Thicker for button */
-    border-right: 2px solid rgba(166, 118, 135, 0.25);
-    
-    /* Pop Shadows */
-    box-shadow:
-      10px 10px 24px var(--shadow-dark),
-      -8px -8px 20px var(--shadow-light),
-      inset 0 1px 2px rgba(255, 255, 255, 0.8);
-      
-    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-  }
+  /* Primary Rectangular Button - PILLOWY & LIFTED */
+.neu-btn {
+  @apply relative overflow-hidden;
+  background: linear-gradient(145deg, #FFF5F8 0%, #F1C8D6 100%);
+  border-radius: 1.5rem;
+  font-weight: 700;
+  color: var(--primary-pink);
+  border: none;
+
+  box-shadow:
+    2px 3px 4px var(--shadow-contact),
+    10px 14px 22px var(--shadow-dark),
+    inset 1px 1px 2px rgba(255,255,255,0.35);
+
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
 
   body.dark .neu-btn {
     background: linear-gradient(145deg, #2a3544 0%, #1a222e 100%);
-    border-top: 1px solid rgba(255,255,255,0.1);
-    border-left: 1px solid rgba(255,255,255,0.1);
-    border-bottom: 3px solid rgba(0,0,0,0.5);
-    border-right: 2px solid rgba(0,0,0,0.5);
     color: #F472B6;
+    box-shadow:
+      5px 5px 10px var(--shadow-contact),
+      14px 14px 28px var(--shadow-dark),
+      -8px -8px 20px var(--shadow-light),
+      inset 1px 1px 2px rgba(255,255,255,0.1);
   }
 
-  .neu-btn:active {
-    transform: translateY(3px) scale(0.98);
-    background: linear-gradient(145deg, #EFDce3 0%, #FFFFFF 100%);
-    box-shadow:
-      inset 6px 6px 12px var(--shadow-dark),
-      inset -6px -6px 12px var(--shadow-light);
-    border-top: 1px solid rgba(166, 118, 135, 0.1);
-    border-bottom: 1px solid rgba(255, 255, 255, 0.5);
-    border-right: 1px solid rgba(255, 255, 255, 0.5);
-  }
+.neu-btn:active {
+  transform: translateY(2px);
+  box-shadow:
+    inset 4px 6px 10px var(--shadow-dark);
+}
   
   body.dark .neu-btn:active {
      background: #111827;
-     border: none;
+     box-shadow:
+       inset 8px 8px 20px rgba(0,0,0,0.9),
+       inset -4px -4px 10px rgba(255,255,255,0.05);
   }
 
-  /* Circular Icon Button */
-  .neu-btn-round {
-    @apply relative;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    border-radius: 9999px;
-    background: linear-gradient(145deg, #FFFFFF 0%, #EFDce3 100%);
-    color: #5D5D5D;
-    
-    /* Directional Highlight */
-    border-top: 1px solid rgba(255, 255, 255, 0.9);
-    border-left: 1px solid rgba(255, 255, 255, 0.9);
-    border-bottom: 2px solid rgba(166, 118, 135, 0.15);
-    border-right: 2px solid rgba(166, 118, 135, 0.15);
-    
-    /* High Elevation Shadow */
-    box-shadow:
-      9px 9px 22px var(--shadow-dark),
-      -7px -7px 18px var(--shadow-light);
-      
-    transition: transform 0.15s ease, box-shadow 0.15s ease;
-  }
+  /* Circular Icon Button - LIFTED */
+.neu-btn-round {
+  @apply relative;
+  background: linear-gradient(145deg, #FFF5F8 0%, #F1C8D6 100%);
+  border-radius: 9999px;
+  border: none;
+
+  box-shadow:
+    2px 3px 4px var(--shadow-contact),
+    10px 12px 20px var(--shadow-dark),
+    inset 1px 1px 2px rgba(255,255,255,0.3);
+}
 
   body.dark .neu-btn-round {
     background: #1F2937;
     color: #E5E7EB;
-    border: 1px solid rgba(255,255,255,0.05);
-    border-bottom: 2px solid rgba(0,0,0,0.5);
-    border-right: 2px solid rgba(0,0,0,0.5);
+    box-shadow:
+      4px 4px 8px var(--shadow-contact),
+      10px 10px 20px var(--shadow-dark),
+      -6px -6px 16px var(--shadow-light),
+      inset 1px 1px 2px rgba(255,255,255,0.1);
   }
 
   .neu-btn-round:active {
-    transform: scale(0.95);
+    transform: scale(0.92);
     background: linear-gradient(145deg, #EFDce3 0%, #FFFFFF 100%);
     box-shadow:
-      inset 5px 7px 12px var(--shadow-dark),
-      inset -4px -5px 10px var(--shadow-light);
-    border-color: transparent;
+      inset 6px 8px 16px var(--shadow-dark),
+      inset -5px -6px 14px var(--shadow-light);
   }
 
-  /* Active / Selected - Highlighted Inset */
+  /* Active / Selected */
   .neu-active {
     @apply relative;
-    background: linear-gradient(145deg, #F4D6DF 0%, #FFF4F7 100%);
+    background: linear-gradient(145deg, #F0CCD7 0%, #FFF5F8 100%);
     color: var(--primary-pink);
+    border: none;
     box-shadow:
-      inset 6px 8px 14px var(--shadow-dark),
-      inset -5px -7px 12px var(--shadow-light);
-    border: 1px solid rgba(255, 255, 255, 0.1);
+      inset 8px 8px 16px var(--shadow-dark),
+      inset -8px -8px 16px var(--shadow-light);
   }
   
   body.dark .neu-active {
     background: #111827;
     box-shadow:
-      inset 6px 8px 16px rgba(0,0,0,0.9),
-      inset -3px -3px 8px rgba(255,255,255,0.05);
+      inset 8px 8px 20px rgba(0,0,0,0.95),
+      inset -4px -4px 10px rgba(255,255,255,0.05);
   }
 
   /* 3D Pagination Dots */
   .neu-dot {
-    @apply h-2 rounded-full transition-all duration-300;
+    @apply h-3 rounded-full transition-all duration-300;
   }
   .neu-dot-active {
-    @apply w-6;
+    @apply w-8;
     background: linear-gradient(135deg, #E84C7C 0%, #FF8BA7 100%);
-    box-shadow: 3px 3px 8px rgba(232, 76, 124, 0.5), -2px -2px 4px rgba(255, 255, 255, 0.6);
+    box-shadow: 4px 4px 10px rgba(232, 76, 124, 0.5), -2px -2px 6px rgba(255, 255, 255, 0.6);
   }
   .neu-dot-inactive {
-    @apply w-2;
+    @apply w-3;
     background: #D1D5DB;
-    box-shadow: inset 1px 1px 3px rgba(0,0,0,0.15);
+    box-shadow: inset 2px 2px 4px rgba(0,0,0,0.15);
   }
   body.dark .neu-dot-inactive {
      background: #374151;
-     box-shadow: inset 1px 1px 2px rgba(0,0,0,0.5);
+     box-shadow: inset 2px 2px 4px rgba(0,0,0,0.5);
   }
 }
 

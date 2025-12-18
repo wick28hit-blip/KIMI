@@ -3,6 +3,7 @@ import { Droplet, Moon, Play, Pause, RotateCcw, X, Clock, Flame, GlassWater, Min
 import { DailyLog, UserProfile, YogaExercise } from '../types';
 import ScrollPicker from './ScrollPicker';
 import { triggerHaptic } from '../utils/haptics';
+import { format, subDays } from 'date-fns';
 
 interface MinePageProps {
   log: DailyLog;
@@ -11,8 +12,6 @@ interface MinePageProps {
 }
 
 // --- PERMANENT CURATED CONTENT REPOSITORY ---
-// Pre-fetched and curated data replacing runtime LLM calls for stability and speed.
-
 const STATIC_WELLNESS_DATA: Record<string, { insight: string; stats: { label: string; value: number; color: string }[] }> = {
   pms: {
     insight: "Magnesium and Vitamin B6 are your best allies. Reducing salt intake 7 days before your period can significantly lower bloating and water retention.",
@@ -83,16 +82,15 @@ const GYM_EXERCISES = [
 ];
 
 const AI_TOPICS = [
-    { id: 'pms', title: "PMS Relief", icon: Flame, color: 'text-orange-500', bg: 'from-orange-100 to-orange-50' },
-    { id: 'cycle', title: "Cycle Science", icon: Brain, color: 'text-purple-500', bg: 'from-purple-100 to-purple-50' },
-    { id: 'yoga', title: "PM Yoga", icon: Sparkles, color: 'text-pink-500', bg: 'from-pink-100 to-pink-50' },
-    { id: 'nutrition', title: "Nutrition", icon:  Heart, color: 'text-green-500', bg: 'from-green-100 to-green-50' },
-    { id: 'mental', title: "Mental Wellness", icon: Wind, color: 'text-blue-500', bg: 'from-blue-100 to-blue-50' },
-    { id: 'sleep', title: "Sleep Hygiene", icon: Moon, color: 'text-indigo-500', bg: 'from-indigo-100 to-indigo-50' }
+  { id: 'pms', title: 'PMS Mastery', icon: Sparkles, color: 'text-purple-500', bg: 'from-purple-50 to-purple-100' },
+  { id: 'cycle', title: 'Cycle Seasons', icon: Sun, color: 'text-pink-500', bg: 'from-pink-50 to-pink-100' },
+  { id: 'yoga', title: 'Healing Yoga', icon: Flame, color: 'text-orange-500', bg: 'from-orange-50 to-orange-100' },
+  { id: 'nutrition', title: 'Cycle Nutrition', icon: Coffee, color: 'text-green-500', bg: 'from-green-50 to-green-100' },
+  { id: 'mental', title: 'Mental Calm', icon: Brain, color: 'text-blue-500', bg: 'from-blue-50 to-blue-100' },
+  { id: 'sleep', title: 'Deep Sleep', icon: Moon, color: 'text-indigo-500', bg: 'from-indigo-50 to-indigo-100' }
 ];
 
 // --- Custom SVGs for Enhanced 3D Look ---
-
 const GymIcon = () => (
   <svg width="42" height="42" viewBox="0 0 48 48" fill="none" className="mb-3 relative z-10 drop-shadow-md">
     <path d="M11 19.5L28.5 37" stroke="white" strokeWidth="4" strokeLinecap="round"/>
@@ -175,7 +173,7 @@ const MinePage: React.FC<MinePageProps> = ({ log, onSaveLog, user }) => {
       setSelectedGymExercise(exercise);
       setTargetSets(exercise.sets);
       setCurrentSet(1);
-      setTimerSeconds(0); // Gym timer counts UP or rests
+      setTimerSeconds(0);
       setIsTimerRunning(false);
       setShowCompletion(false);
       setActiveModal('GYM_TIMER');
@@ -187,7 +185,6 @@ const MinePage: React.FC<MinePageProps> = ({ log, onSaveLog, user }) => {
           setCurrentSet(s => s + 1);
           triggerHaptic('success');
       } else {
-          // Finish
           handleGymComplete();
       }
   };
@@ -195,12 +192,11 @@ const MinePage: React.FC<MinePageProps> = ({ log, onSaveLog, user }) => {
   const handleGymComplete = () => {
       setShowCompletion(true);
       triggerHaptic('success');
-      // Log generic gym activity
       onSaveLog({
           ...log,
           didExercise: true,
           exerciseType: 'Gym',
-          exerciseDuration: (log.exerciseDuration || 0) + 15 // Approx 15 min per exercise block
+          exerciseDuration: (log.exerciseDuration || 0) + 15
       });
       setTimeout(() => {
           setShowCompletion(false);
@@ -212,9 +208,7 @@ const MinePage: React.FC<MinePageProps> = ({ log, onSaveLog, user }) => {
   const fetchYogaExercises = () => {
     setActiveModal('YOGA');
     triggerHaptic('medium');
-    
     if (yogaList.length > 0) return;
-
     setIsLoadingYoga(true);
     setTimeout(() => {
         setYogaList(STATIC_YOGA_EXERCISES);
@@ -234,12 +228,10 @@ const MinePage: React.FC<MinePageProps> = ({ log, onSaveLog, user }) => {
     if (!selectedYoga) return;
     setShowCompletion(true);
     triggerHaptic('success');
-    
     const durationMins = Math.ceil(selectedYoga.durationSeconds / 60);
     const existingList = log.completedYogaExercises || [];
     const newList = [...existingList, selectedYoga];
     const newTotalDuration = (log.exerciseDuration || 0) + durationMins;
-
     onSaveLog({
         ...log,
         didExercise: true,
@@ -247,7 +239,6 @@ const MinePage: React.FC<MinePageProps> = ({ log, onSaveLog, user }) => {
         exerciseDuration: newTotalDuration,
         completedYogaExercises: newList
     });
-
     setTimeout(() => {
         setShowCompletion(false);
         setSelectedYoga(null);
@@ -257,18 +248,11 @@ const MinePage: React.FC<MinePageProps> = ({ log, onSaveLog, user }) => {
   // --- Shared Timer Effect ---
   useEffect(() => {
     let interval: ReturnType<typeof setInterval>;
-    
     if (isTimerRunning) {
         if (activeModal === 'GYM_TIMER') {
-            // Count UP for gym (rest timer or active timer)
-            interval = setInterval(() => {
-                setTimerSeconds(prev => prev + 1);
-            }, 1000);
+            interval = setInterval(() => { setTimerSeconds(prev => prev + 1); }, 1000);
         } else if (selectedYoga && timerSeconds > 0) {
-            // Count DOWN for yoga
-            interval = setInterval(() => {
-                setTimerSeconds((prev) => prev - 1);
-            }, 1000);
+            interval = setInterval(() => { setTimerSeconds((prev) => prev - 1); }, 1000);
         } else if (selectedYoga && timerSeconds === 0) {
             setIsTimerRunning(false);
             handleYogaComplete();
@@ -294,7 +278,6 @@ const MinePage: React.FC<MinePageProps> = ({ log, onSaveLog, user }) => {
     return `${m}:${s < 10 ? '0' : ''}${s}`;
   };
 
-  // --- Content Logic (Static) ---
   const loadContent = (topic: typeof AI_TOPICS[0]) => {
       setSelectedTopic(topic);
       const data = STATIC_WELLNESS_DATA[topic.id];
@@ -303,34 +286,31 @@ const MinePage: React.FC<MinePageProps> = ({ log, onSaveLog, user }) => {
       triggerHaptic('medium');
   };
 
-  // Helpers for Hydration Ring
   const waterPercentage = Math.min(100, (log.waterIntake / log.waterTarget) * 100);
-  
-  // Helpers for Sleep Ring
   const sleepTargetHours = log.sleepTarget / 60;
   const sleepPercentage = Math.min(100, (log.sleepDuration / log.sleepTarget) * 100);
 
   return (
     <div className="flex flex-col h-full bg-[#FFF0F3] dark:bg-gray-900 overflow-y-auto no-scrollbar pb-32 transition-colors duration-300">
       
-      {/* Header */}
       <div className="p-6 pb-4">
         <h1 className="text-3xl font-bold text-[#2D2D2D] dark:text-white mb-1">Self Care</h1>
         <p className="text-gray-500 dark:text-gray-400 text-sm">Your daily vitals & wellness</p>
       </div>
 
-      {/* --- Unified Grid Section --- */}
       <div className="px-6 pb-6">
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-2 gap-6">
           
-          {/* Water Card */}
+          {/* Water Card - Fat 3D Molded Edge + Contact Shadow */}
           <div 
             onClick={() => { setActiveModal('WATER'); triggerHaptic('medium'); }}
-            className="group relative h-48 rounded-[2rem] p-5 overflow-hidden cursor-pointer transition-all active:translate-y-3 active:border-b-0
+            className="group relative h-48 rounded-[2rem] p-5 overflow-hidden cursor-pointer transition-all active:scale-95
             bg-gradient-to-b from-[#4FC3F7] to-[#0288D1] 
-            border-b-[14px] border-r-[4px] border-[#01579B] 
-            shadow-[0_12px_25px_-5px_rgba(2,136,209,0.4)]"
+            shadow-[6px_6px_12px_rgba(1,87,155,0.3),18px_18px_36px_rgba(1,87,155,0.4),-18px_-18px_36px_rgba(255,255,255,0.5)]"
           >
+            {/* Soft Inner Highlight Ring */}
+            <div className="absolute inset-0 rounded-[2rem] border border-white/20 pointer-events-none"></div>
+            
             <div className="absolute top-0 left-0 right-0 h-1/2 bg-gradient-to-b from-white/20 to-transparent pointer-events-none rounded-t-[2rem]"></div>
             <div className="relative z-10 h-full flex flex-col justify-between">
                 <div>
@@ -349,14 +329,14 @@ const MinePage: React.FC<MinePageProps> = ({ log, onSaveLog, user }) => {
             </div>
           </div>
 
-          {/* Sleep Card */}
+          {/* Sleep Card - Fat 3D Molded Edge + Contact Shadow */}
           <div 
             onClick={() => { setActiveModal('SLEEP'); triggerHaptic('medium'); }}
-            className="group relative h-48 rounded-[2rem] p-5 overflow-hidden cursor-pointer transition-all active:translate-y-3 active:border-b-0
+            className="group relative h-48 rounded-[2rem] p-5 overflow-hidden cursor-pointer transition-all active:scale-95
             bg-gradient-to-b from-[#7E57C2] to-[#5E35B1] 
-            border-b-[14px] border-r-[4px] border-[#4527A0] 
-            shadow-[0_12px_25px_-5px_rgba(94,53,177,0.4)]"
+            shadow-[6px_6px_12px_rgba(94,53,177,0.3),18px_18px_36px_rgba(94,53,177,0.4),-18px_-18px_36px_rgba(255,255,255,0.5)]"
           >
+             <div className="absolute inset-0 rounded-[2rem] border border-white/20 pointer-events-none"></div>
             <div className="absolute top-0 left-0 right-0 h-1/2 bg-gradient-to-b from-white/20 to-transparent pointer-events-none rounded-t-[2rem]"></div>
             <div className="relative z-10 h-full flex flex-col justify-between">
                 <div>
@@ -377,14 +357,14 @@ const MinePage: React.FC<MinePageProps> = ({ log, onSaveLog, user }) => {
             </div>
           </div>
 
-          {/* Gym Card */}
+          {/* Gym Card - Fat 3D Molded Edge + Contact Shadow */}
           <div 
             onClick={() => { setActiveModal('GYM_LIST'); triggerHaptic('medium'); }}
-            className="group relative h-48 rounded-[2rem] p-5 overflow-hidden cursor-pointer transition-all active:translate-y-3 active:border-b-0
+            className="group relative h-48 rounded-[2rem] p-5 overflow-hidden cursor-pointer transition-all active:scale-95
             bg-gradient-to-b from-[#FF8A65] to-[#E64A19] 
-            border-b-[14px] border-r-[4px] border-[#BF360C] 
-            shadow-[0_12px_25px_-5px_rgba(230,74,25,0.4)]"
+            shadow-[6px_6px_12px_rgba(216,67,21,0.3),18px_18px_36px_rgba(216,67,21,0.4),-18px_-18px_36px_rgba(255,255,255,0.5)]"
           >
+             <div className="absolute inset-0 rounded-[2rem] border border-white/20 pointer-events-none"></div>
             <div className="absolute top-0 left-0 right-0 h-1/2 bg-gradient-to-b from-white/20 to-transparent pointer-events-none rounded-t-[2rem]"></div>
             <div className="relative z-10 h-full flex flex-col justify-between">
                 <div>
@@ -401,14 +381,14 @@ const MinePage: React.FC<MinePageProps> = ({ log, onSaveLog, user }) => {
             </div>
           </div>
 
-          {/* Yoga Card */}
+          {/* Yoga Card - Fat 3D Molded Edge + Contact Shadow */}
           <div 
             onClick={fetchYogaExercises}
-            className="group relative h-48 rounded-[2rem] p-5 overflow-hidden cursor-pointer transition-all active:translate-y-3 active:border-b-0
+            className="group relative h-48 rounded-[2rem] p-5 overflow-hidden cursor-pointer transition-all active:scale-95
             bg-gradient-to-b from-[#F06292] to-[#D81B60] 
-            border-b-[14px] border-r-[4px] border-[#880E4F] 
-            shadow-[0_12px_25px_-5px_rgba(216,27,96,0.4)]"
+            shadow-[6px_6px_12px_rgba(194,24,91,0.3),18px_18px_36px_rgba(194,24,91,0.4),-18px_-18px_36px_rgba(255,255,255,0.5)]"
           >
+             <div className="absolute inset-0 rounded-[2rem] border border-white/20 pointer-events-none"></div>
             <div className="absolute top-0 left-0 right-0 h-1/2 bg-gradient-to-b from-white/20 to-transparent pointer-events-none rounded-t-[2rem]"></div>
             <div className="relative z-10 h-full flex flex-col justify-between">
                 <div>
@@ -424,7 +404,6 @@ const MinePage: React.FC<MinePageProps> = ({ log, onSaveLog, user }) => {
         </div>
       </div>
 
-      {/* --- Wellness Knowledge (Soft 3D Floating Cards) --- */}
       <div className="px-6 mb-6">
           <h3 className="text-lg font-bold text-gray-800 dark:text-white mb-4">Wellness Knowledge</h3>
           <div className="flex gap-4 overflow-x-auto no-scrollbar pb-6 snap-x px-2 -mx-2">
@@ -432,9 +411,8 @@ const MinePage: React.FC<MinePageProps> = ({ log, onSaveLog, user }) => {
                   <div 
                     key={topic.id}
                     onClick={() => loadContent(topic)}
-                    className={`flex-shrink-0 w-36 h-40 rounded-3xl bg-gradient-to-br ${topic.bg} relative p-4 flex flex-col justify-between snap-center cursor-pointer transition-transform active:scale-95 shadow-[0_8px_16px_-4px_rgba(0,0,0,0.1)] hover:shadow-lg hover:-translate-y-1`}
+                    className={`flex-shrink-0 w-36 h-40 rounded-3xl bg-gradient-to-br ${topic.bg} relative p-4 flex flex-col justify-between snap-center cursor-pointer transition-transform active:scale-95 shadow-[6px_6px_12px_rgba(0,0,0,0.05),12px_12px_24px_rgba(0,0,0,0.1),-10px_-10px_20px_rgba(255,255,255,0.8)] hover:shadow-lg hover:-translate-y-1`}
                   >
-                      {/* Soft 3D Lighting Overlay */}
                       <div className="absolute inset-0 rounded-3xl bg-gradient-to-br from-white/60 to-transparent pointer-events-none"></div>
                       
                       <div className="relative z-10">
@@ -455,7 +433,6 @@ const MinePage: React.FC<MinePageProps> = ({ log, onSaveLog, user }) => {
           </div>
       </div>
 
-      {/* --- Active Yoga List Content --- */}
       {activeModal === 'YOGA' && (
         <div className="px-6 pb-6 animate-in slide-in-from-bottom duration-500">
           <div className="flex justify-between items-end mb-4">
@@ -477,7 +454,6 @@ const MinePage: React.FC<MinePageProps> = ({ log, onSaveLog, user }) => {
                   className="group relative h-28 bg-gradient-to-r from-gray-800 to-gray-700 rounded-2xl p-5 overflow-hidden shadow-lg cursor-pointer transform transition-transform hover:scale-[1.02]"
                   style={{ perspective: '1000px' }}
                 >
-                    {/* 3D Decorative Effect */}
                     <div className="absolute top-0 right-0 w-24 h-full bg-white/5 skew-x-12 border-l border-white/10"></div>
                     <div className="absolute bottom-0 right-10 w-16 h-full bg-white/5 skew-x-12 border-l border-white/5"></div>
                     
@@ -504,7 +480,6 @@ const MinePage: React.FC<MinePageProps> = ({ log, onSaveLog, user }) => {
         </div>
       )}
 
-      {/* --- Gym List Content --- */}
       {activeModal === 'GYM_LIST' && (
         <div className="px-6 pb-6 animate-in slide-in-from-bottom duration-500">
           <div className="flex justify-between items-end mb-4">
@@ -519,7 +494,6 @@ const MinePage: React.FC<MinePageProps> = ({ log, onSaveLog, user }) => {
                     className="group relative h-28 bg-gradient-to-r from-gray-800 to-gray-700 rounded-2xl p-5 overflow-hidden shadow-lg cursor-pointer transform transition-transform hover:scale-[1.02]"
                     style={{ perspective: '1000px' }}
                   >
-                      {/* 3D Decorative Effect */}
                       <div className="absolute top-0 right-0 w-24 h-full bg-white/5 skew-x-12 border-l border-white/10"></div>
                       <div className="absolute bottom-0 right-10 w-16 h-full bg-white/5 skew-x-12 border-l border-white/5"></div>
                       
@@ -539,7 +513,6 @@ const MinePage: React.FC<MinePageProps> = ({ log, onSaveLog, user }) => {
         </div>
       )}
 
-      {/* --- Content Modal (Static Data) --- */}
       {activeModal === 'CONTENT' && selectedTopic && contentData && (
           <div 
             className="fixed inset-0 z-[70] flex items-center justify-center bg-black/60 backdrop-blur-sm animate-in fade-in"
@@ -549,7 +522,6 @@ const MinePage: React.FC<MinePageProps> = ({ log, onSaveLog, user }) => {
                 className="bg-white dark:bg-gray-800 w-full max-w-sm rounded-[2rem] p-0 relative overflow-hidden shadow-2xl animate-in zoom-in-95 duration-300"
                 onClick={e => e.stopPropagation()}
               >
-                  {/* Header Image/Gradient */}
                   <div className={`h-40 w-full bg-gradient-to-br ${selectedTopic.bg} relative`}>
                       <div className="absolute inset-0 bg-white/30 backdrop-blur-[2px]"></div>
                       <button onClick={() => setActiveModal('NONE')} className="absolute top-4 right-4 w-8 h-8 rounded-full bg-white/50 flex items-center justify-center z-20">
@@ -571,7 +543,6 @@ const MinePage: React.FC<MinePageProps> = ({ log, onSaveLog, user }) => {
                               </p>
                           </div>
                           
-                          {/* Visual Stats */}
                           <div className="space-y-5">
                               <h4 className="text-xs font-bold text-gray-400 uppercase tracking-widest flex items-center gap-2">
                                   <Activity size={14} /> Key Benefits
@@ -597,19 +568,18 @@ const MinePage: React.FC<MinePageProps> = ({ log, onSaveLog, user }) => {
           </div>
       )}
 
-      {/* --- Water Modal (Bottom Sheet) --- */}
       {activeModal === 'WATER' && (
         <div 
           className="fixed inset-0 z-[60] flex items-end justify-center bg-black/60 backdrop-blur-sm animate-in fade-in"
           onClick={() => setActiveModal('NONE')}
         >
            <div 
-            className="bg-white dark:bg-gray-800 w-full max-w-md rounded-t-[2.5rem] p-8 pb-12 animate-in slide-in-from-bottom duration-300 relative shadow-2xl"
+            className="bg-white dark:bg-gray-800 w-full max-w-md rounded-t-[2.5rem] p-8 pb-12 animate-in slide-in-from-bottom duration-300 relative shadow-2xl max-h-[85vh] overflow-y-auto no-scrollbar"
             onClick={e => e.stopPropagation()}
           >
              <div className="absolute top-4 left-1/2 -translate-x-1/2 w-12 h-1.5 bg-gray-200 dark:bg-gray-700 rounded-full"></div>
              
-             <div className="text-center mb-6">
+             <div className="text-center mb-6 pt-4">
                  <h2 className="text-2xl font-bold text-gray-800 dark:text-white flex items-center justify-center gap-2">
                      <Droplet className="text-blue-500 fill-blue-500" /> Hydration
                  </h2>
@@ -669,17 +639,15 @@ const MinePage: React.FC<MinePageProps> = ({ log, onSaveLog, user }) => {
         </div>
       )}
 
-      {/* --- Sleep Modal (Bottom Sheet) --- */}
       {activeModal === 'SLEEP' && (
         <div 
           className="fixed inset-0 z-[60] flex items-end justify-center bg-black/60 backdrop-blur-sm animate-in fade-in"
           onClick={() => setActiveModal('NONE')}
         >
            <div 
-            className="w-full max-w-md rounded-t-[2.5rem] p-8 pb-12 animate-in slide-in-from-bottom duration-300 relative shadow-2xl overflow-hidden bg-gradient-to-b from-[#0F172A] to-[#1E1B4B]"
+            className="w-full max-w-md rounded-t-[2.5rem] p-8 pb-12 animate-in slide-in-from-bottom duration-300 relative shadow-2xl bg-gradient-to-b from-[#0F172A] to-[#1E1B4B] max-h-[85vh] overflow-y-auto overflow-x-hidden no-scrollbar"
             onClick={e => e.stopPropagation()}
           >
-             {/* Starry Background Effect */}
              <div className="absolute inset-0 z-0 opacity-40">
                 <div className="absolute top-10 left-10 w-1 h-1 bg-white rounded-full animate-pulse"></div>
                 <div className="absolute top-20 right-20 w-1 h-1 bg-white rounded-full animate-pulse" style={{ animationDelay: '1s' }}></div>
@@ -688,7 +656,7 @@ const MinePage: React.FC<MinePageProps> = ({ log, onSaveLog, user }) => {
 
              <div className="absolute top-4 left-1/2 -translate-x-1/2 w-12 h-1.5 bg-white/20 rounded-full z-10"></div>
              
-             <div className="text-center mb-6 relative z-10">
+             <div className="text-center mb-6 pt-4 relative z-10">
                  <h2 className="text-2xl font-bold text-white flex items-center justify-center gap-2">
                      {sleepProgressRatio >= 1 ? <Sun className="text-amber-400 fill-amber-400" /> : <Moon className="text-indigo-300 fill-indigo-300" />}
                      Sleep Tracking
@@ -699,10 +667,8 @@ const MinePage: React.FC<MinePageProps> = ({ log, onSaveLog, user }) => {
              <div className="flex justify-center mb-8 relative z-10">
                  <div className="relative w-64 h-64 flex items-center justify-center">
                     
-                    {/* Dynamic Sun/Moon Graphic Container */}
                     <div className="absolute inset-0 flex items-center justify-center z-10 pointer-events-none">
                         
-                        {/* Realistic 3D Moon SVG */}
                         <svg width="140" height="140" viewBox="0 0 100 100" 
                             className="absolute transition-all duration-1000 ease-in-out"
                             style={{ 
@@ -719,7 +685,6 @@ const MinePage: React.FC<MinePageProps> = ({ log, onSaveLog, user }) => {
                             <circle cx="50" cy="50" r="42" fill="url(#realMoonGrad)" />
                         </svg>
 
-                        {/* Realistic 3D Sun SVG */}
                         <svg width="150" height="150" viewBox="0 0 100 100" 
                              className="absolute transition-all duration-1000 ease-in-out"
                              style={{ 
@@ -732,7 +697,6 @@ const MinePage: React.FC<MinePageProps> = ({ log, onSaveLog, user }) => {
 
                     </div>
 
-                    {/* Outer Progress Ring */}
                     <svg className="w-full h-full rotate-[-90deg] absolute inset-0" viewBox="0 0 100 100">
                         <circle cx="50" cy="50" r="45" fill="none" stroke="#312E81" strokeWidth="4" className="opacity-30" />
                         <circle 
@@ -747,7 +711,6 @@ const MinePage: React.FC<MinePageProps> = ({ log, onSaveLog, user }) => {
                  </div>
              </div>
 
-             {/* Redesigned Time Picker */}
              <div className="flex justify-center gap-4 mb-6 relative z-10">
                 <div className="flex flex-col items-center">
                     <div className="h-[100px] w-[70px] relative">
@@ -794,8 +757,6 @@ const MinePage: React.FC<MinePageProps> = ({ log, onSaveLog, user }) => {
         </div>
       )}
 
-
-      {/* --- Unified Timer Modal (Yoga or Gym) --- */}
       {(selectedYoga || activeModal === 'GYM_TIMER') && (
         <div 
           className="fixed inset-0 z-[60] flex items-end justify-center bg-black/60 backdrop-blur-sm animate-in fade-in"
@@ -806,12 +767,12 @@ const MinePage: React.FC<MinePageProps> = ({ log, onSaveLog, user }) => {
           }}
         >
           <div 
-            className="bg-white dark:bg-gray-800 w-full max-w-md rounded-t-[2.5rem] p-8 pb-12 animate-in slide-in-from-bottom duration-300 relative shadow-2xl"
+            className="bg-white dark:bg-gray-800 w-full max-w-md rounded-t-[2.5rem] p-8 pb-12 animate-in slide-in-from-bottom duration-300 relative shadow-2xl max-h-[85vh] overflow-y-auto no-scrollbar"
             onClick={e => e.stopPropagation()}
           >
             <div className="absolute top-4 left-1/2 -translate-x-1/2 w-12 h-1.5 bg-gray-200 dark:bg-gray-700 rounded-full"></div>
 
-            <div className="text-center mb-8">
+            <div className="text-center mb-8 pt-4">
               <span className="inline-block px-3 py-1 rounded-full bg-pink-100 dark:bg-pink-900/30 text-[#E84C7C] text-xs font-bold uppercase tracking-widest mb-4">
                 {selectedYoga ? 'Yoga Flow' : 'Strength Set'}
               </span>
@@ -823,7 +784,6 @@ const MinePage: React.FC<MinePageProps> = ({ log, onSaveLog, user }) => {
               )}
             </div>
 
-            {/* Timer Display */}
             {showCompletion ? (
                 <div className="flex flex-col items-center justify-center h-64 animate-in zoom-in duration-300">
                     <div className="w-24 h-24 bg-green-100 rounded-full flex items-center justify-center text-green-500 mb-4 shadow-lg shadow-green-200">
@@ -880,7 +840,6 @@ const MinePage: React.FC<MinePageProps> = ({ log, onSaveLog, user }) => {
                 </div>
             )}
 
-            {/* Gym Set Counter Controls */}
             {activeModal === 'GYM_TIMER' && !showCompletion && (
                 <div className="flex justify-center items-center gap-6 mb-8">
                     <button disabled className="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center text-gray-400 font-bold">-</button>
@@ -892,7 +851,6 @@ const MinePage: React.FC<MinePageProps> = ({ log, onSaveLog, user }) => {
                 </div>
             )}
 
-            {/* Controls */}
             {!showCompletion && (
                 <div className="flex items-center justify-center gap-8">
                 <button 

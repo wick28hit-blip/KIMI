@@ -194,15 +194,6 @@ const Settings: React.FC<SettingsProps> = ({
       return saved ? JSON.parse(saved) : DEFAULT_REMINDERS;
   });
 
-  // Migration Effect: Updates old labels in existing localStorage data to new names
-  useEffect(() => {
-    setReminders(prev => prev.map(r => {
-        if (r.id === '12' && r.label === 'Kegel exercise') return { ...r, label: 'Gym Workout' };
-        if (r.id === '13' && r.label === 'PMS relief flow') return { ...r, label: 'PMS relief YOGA' };
-        return r;
-    }));
-  }, []);
-
   useEffect(() => {
       localStorage.setItem('KIMI_REMINDERS', JSON.stringify(reminders));
   }, [reminders]);

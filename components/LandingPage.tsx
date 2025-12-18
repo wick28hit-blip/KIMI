@@ -7,12 +7,12 @@ interface LandingPageProps {
 
 const LandingPage: React.FC<LandingPageProps> = ({ onStartTracking }) => {
   return (
-    <div className="h-full flex flex-col relative overflow-y-auto no-scrollbar">
+    <div className="h-full flex flex-col relative overflow-y-auto overflow-x-hidden no-scrollbar w-full">
       {/* Background Decor */}
       <div className="absolute top-[-100px] right-[-100px] w-64 h-64 bg-pink-200/50 rounded-full blur-3xl pointer-events-none opacity-60"></div>
       <div className="absolute top-[20%] left-[-50px] w-48 h-48 bg-purple-200/50 rounded-full blur-3xl pointer-events-none opacity-60"></div>
 
-      <div className="flex-1 flex flex-col px-6 pt-16 pb-10 z-10">
+      <div className="flex-1 flex flex-col px-6 pt-16 pb-10 z-10 w-full">
         
         {/* Badge */}
         <div className="flex justify-center mb-8 animate-in fade-in slide-in-from-top-4 duration-700">
@@ -24,7 +24,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onStartTracking }) => {
 
         {/* Hero Text */}
         <div className="text-center mb-8 animate-in fade-in zoom-in duration-700 delay-100">
-          <h1 className="text-5xl font-bold leading-tight mb-2 tracking-tight text-[#2D2D2D] dark:text-white">
+          <h1 className="text-4xl md:text-5xl font-bold leading-tight mb-2 tracking-tight text-[#2D2D2D] dark:text-white">
             <span className="block text-[#E84C7C]">Know your body.</span>
             <span className="block bg-gradient-to-r from-[#E84C7C] to-purple-500 bg-clip-text text-transparent">Own your cycle.</span>
           </h1>

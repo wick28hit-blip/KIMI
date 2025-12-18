@@ -1,5 +1,6 @@
+
 import React, { useState, useEffect } from 'react';
-import { UserProfile, CycleData, AppState, DailyLog, ProfileData } from './types';
+import { UserProfile, CycleData, AppState, DailyLog, ProfileData, ReminderConfig } from './types';
 import { STORAGE_KEY, HAS_ACCOUNT_KEY, encryptData, decryptData } from './utils/crypto';
 import Onboarding from './components/Onboarding';
 import LandingPage from './components/LandingPage';
@@ -39,12 +40,12 @@ export default function App() {
   
   // Legend Popup State
   const [legendPopup, setLegendPopup] = useState<{label: string, desc: string} | null>(null);
+  // Active Legend Highlight State
+  const [activeLegend, setActiveLegend] = useState<'period' | 'ovulation' | 'fertile' | null>(null);
 
   useEffect(() => {
-    if ('Notification' in window && Notification.permission === 'default') {
-        Notification.requestPermission();
-    }
-
+    // Note: Permission request logic handled in Settings for iOS compliance
+    
     const registerPeriodicSync = async () => {
         if ('serviceWorker' in navigator) {
             const registration = await navigator.serviceWorker.ready;
@@ -71,10 +72,15 @@ export default function App() {
 
   useEffect(() => {
     if (state.user && state.cycle && state.activeProfileId) {
+        // Fetch reminders from localStorage to sync with IDB for the scheduler
+        const remindersStr = localStorage.getItem('KIMI_REMINDERS');
+        const reminders = remindersStr ? JSON.parse(remindersStr) : [];
+        
         const profileData: ProfileData = {
             user: state.user,
             cycle: state.cycle,
-            logs: state.logs
+            logs: state.logs,
+            reminders
         };
         syncProfileToIDB(profileData).catch(console.error);
     }
@@ -276,6 +282,7 @@ export default function App() {
   const handleReset = () => {
     localStorage.removeItem(STORAGE_KEY);
     localStorage.removeItem(HAS_ACCOUNT_KEY);
+    localStorage.removeItem('KIMI_REMINDERS');
     Object.keys(localStorage).forEach(key => {
         if (key.startsWith(USER_KEY_PREFIX) || key.startsWith(LOGS_KEY_PREFIX) || key.startsWith(LEGACY_PROFILE_KEY_PREFIX)) {
             localStorage.removeItem(key);
@@ -394,7 +401,6 @@ export default function App() {
     localStorage.setItem(`${LOGS_KEY_PREFIX}${state.activeProfileId}`, encryptData(newLogs, pinToUse));
     
     setState(s => ({ ...s, profiles: newProfiles, logs: newLogs }));
-    // Note: Success haptic handled in DailyLog.tsx onSave calls for specific actions, or we can do it here
   };
 
   const handleExportData = () => {
@@ -416,6 +422,7 @@ export default function App() {
     triggerHaptic('medium');
   };
 
+  // --- FIX: Explicitly type and cast handleImportData to resolve 'unknown' property access errors ---
   const handleImportData = (file: File) => {
     const reader = new FileReader();
     reader.onload = (e) => {
@@ -444,22 +451,32 @@ export default function App() {
         } else if (data.user && data.cycle) {
              const userData = data.user;
              const uid = userData.id || 'imported_user';
-             importedProfiles = { [uid]: { user: { ...userData, id: uid }, cycle: data.cycle, logs: data.logs || {} } };
+             const profile: ProfileData = { 
+               user: { ...userData, id: uid }, 
+               cycle: data.cycle, 
+               logs: data.logs || {} 
+             };
+             importedProfiles = { [uid]: profile };
              activeId = uid;
         }
 
-        if (Object.keys(importedProfiles).length > 0) {
-            const primary = Object.values(importedProfiles).find((p: ProfileData) => p.user?.relationship === 'Self');
+        const profileIds = Object.keys(importedProfiles);
+        if (profileIds.length > 0) {
+            // FIX: Explicitly get values as ProfileData[]
+            const profilesArray: ProfileData[] = Object.values(importedProfiles);
+            const primary = profilesArray.find((p: ProfileData) => p.user?.relationship === 'Self');
             persistAllProfiles(importedProfiles, activeId, primary?.user?.pin || '0000');
-            const activeData = importedProfiles[activeId];
+            
+            // FIX: Access current active profile and its properties with type safety
+            const activeData: ProfileData | undefined = importedProfiles[activeId];
             setState(s => ({
                 ...s,
                 view: 'HOME',
                 profiles: importedProfiles,
                 activeProfileId: activeId,
-                user: activeData?.user || null,
-                cycle: activeData?.cycle || null,
-                logs: activeData?.logs || {}
+                user: activeData ? activeData.user : null,
+                cycle: activeData ? activeData.cycle : null,
+                logs: activeData ? activeData.logs : {}
             }));
             alert('Data imported successfully!');
             triggerHaptic('success');
@@ -504,6 +521,17 @@ export default function App() {
       setTimeout(() => setLegendPopup(null), 3000);
   };
 
+  const toggleLegend = (type: 'period' | 'ovulation' | 'fertile') => {
+      if (activeLegend === type) {
+          setActiveLegend(null);
+          setLegendPopup(null);
+      } else {
+          setActiveLegend(type);
+          showLegendInfo(type);
+      }
+      triggerHaptic('light');
+  };
+
   // --- RENDERERS ---
 
   if (state.view === 'SPLASH') return <SplashScreen onComplete={handleSplashComplete} />;
@@ -523,7 +551,7 @@ export default function App() {
            <button onClick={() => { setCurrentDate(addMonths(currentDate, 1)); triggerHaptic('light'); }} className="neu-btn-round w-10 h-10">&gt;</button>
         </div>
 
-        <div className="neu-flat p-4 mb-4">
+        <div className="neu-flat p-4 mb-4 transition-all duration-300">
             <div className="grid grid-cols-7 gap-2 mb-2">
             {weekDays.map(d => <div key={d} className="text-center text-gray-400 text-sm font-bold">{d}</div>)}
             </div>
@@ -542,8 +570,16 @@ export default function App() {
                 else if (status === 'period_past') { bgClass = 'bg-[#E84C7C] opacity-60 text-white'; textClass = 'text-white'; }
                 else if (isToday(day)) { bgClass = 'border-2 border-[#E84C7C]'; }
 
+                // Highlighting Logic
+                const isHighlighted = activeLegend === null || 
+                                      (activeLegend === 'period' && (status === 'period' || status === 'period_past')) ||
+                                      (activeLegend === 'ovulation' && status === 'ovulation') ||
+                                      (activeLegend === 'fertile' && status === 'fertile');
+
+                const opacityClass = isHighlighted ? 'opacity-100 scale-100' : 'opacity-20 scale-90 grayscale';
+
                 return (
-                <div key={day.toString()} className="flex flex-col items-center">
+                <div key={day.toString()} className={`flex flex-col items-center transition-all duration-500 ${opacityClass}`}>
                     <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold transition-all ${bgClass} ${textClass}`}>
                     {format(day, 'd')}
                     </div>
@@ -555,24 +591,24 @@ export default function App() {
         
         <div className="flex flex-wrap justify-center gap-3 mt-8 px-4">
            <button 
-             onClick={() => showLegendInfo('period')} 
-             className="flex items-center gap-2 px-3 py-2 rounded-xl hover:bg-white/50 dark:hover:bg-white/5 active:scale-95 transition-all"
+             onClick={() => toggleLegend('period')} 
+             className={`flex items-center gap-2 px-3 py-2 rounded-xl active:scale-95 transition-all ${activeLegend === 'period' ? 'bg-white dark:bg-white/10 shadow-md ring-2 ring-[#E84C7C] ring-offset-2 dark:ring-offset-gray-900' : 'hover:bg-white/50 dark:hover:bg-white/5'}`}
            >
               <div className="w-3 h-3 rounded-full bg-[#E84C7C] shadow-sm"></div>
               <span className="text-xs font-bold text-gray-600 dark:text-gray-300">Period</span>
            </button>
            
            <button 
-             onClick={() => showLegendInfo('ovulation')} 
-             className="flex items-center gap-2 px-3 py-2 rounded-xl hover:bg-white/50 dark:hover:bg-white/5 active:scale-95 transition-all"
+             onClick={() => toggleLegend('ovulation')} 
+             className={`flex items-center gap-2 px-3 py-2 rounded-xl active:scale-95 transition-all ${activeLegend === 'ovulation' ? 'bg-white dark:bg-white/10 shadow-md ring-2 ring-[#7B86CB] ring-offset-2 dark:ring-offset-gray-900' : 'hover:bg-white/50 dark:hover:bg-white/5'}`}
            >
               <div className="w-3 h-3 rounded-full bg-[#7B86CB] shadow-sm"></div>
               <span className="text-xs font-bold text-gray-600 dark:text-gray-300">Ovulation</span>
            </button>
            
            <button 
-             onClick={() => showLegendInfo('fertile')} 
-             className="flex items-center gap-2 px-3 py-2 rounded-xl hover:bg-white/50 dark:hover:bg-white/5 active:scale-95 transition-all"
+             onClick={() => toggleLegend('fertile')} 
+             className={`flex items-center gap-2 px-3 py-2 rounded-xl active:scale-95 transition-all ${activeLegend === 'fertile' ? 'bg-white dark:bg-white/10 shadow-md ring-2 ring-pink-300 ring-offset-2 dark:ring-offset-gray-900' : 'hover:bg-white/50 dark:hover:bg-white/5'}`}
            >
               <div className="w-3 h-3 rounded-full bg-pink-100 border border-[#E84C7C] shadow-sm"></div>
               <span className="text-xs font-bold text-gray-600 dark:text-gray-300">Fertile</span>
@@ -700,19 +736,6 @@ export default function App() {
         };
     });
 
-    const sortedLogs = logs.sort((a, b) => b.date.localeCompare(a.date));
-    const historyGroups: { title: string; logs: DailyLog[] }[] = [];
-    
-    sortedLogs.forEach(log => {
-        const title = format(parseISO(log.date), 'MMMM yyyy');
-        let group = historyGroups.find(g => g.title === title);
-        if (!group) {
-            group = { title, logs: [] };
-            historyGroups.push(group);
-        }
-        group.logs.push(log);
-    });
-
     return (
         <div className="p-6 h-full overflow-y-auto pb-32">
             <h2 className="text-2xl font-bold text-[#2D2D2D] dark:text-white mb-6">Insights</h2>
@@ -836,46 +859,6 @@ export default function App() {
                     )}
                 </div>
             </div>
-
-            <div className="mt-8">
-                <h3 className="font-bold text-gray-800 dark:text-white mb-4">Log History</h3>
-                {historyGroups.length > 0 ? historyGroups.map((group) => (
-                    <div key={group.title} className="mb-6">
-                        <h4 className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-3 pl-2 border-l-2 border-[#E84C7C]">{group.title}</h4>
-                        <div className="space-y-3">
-                            {group.logs.map(log => {
-                                const dayNum = format(parseISO(log.date), 'd');
-                                const dayName = format(parseISO(log.date), 'EEEE');
-                                const hasSymptoms = (log.detailedSymptoms?.length || 0) + (log.symptoms?.length || 0) > 0;
-                                const hasMood = (log.mood?.length || 0) > 0;
-                                
-                                return (
-                                    <div key={log.date} className="neu-flat p-3 flex items-center justify-between">
-                                        <div className="flex items-center gap-3">
-                                            <div className="flex flex-col items-center justify-center w-10 h-10 neu-pressed rounded-lg">
-                                                <span className="text-sm font-bold text-gray-800 dark:text-white">{dayNum}</span>
-                                            </div>
-                                            <div>
-                                                <span className="text-xs font-bold text-gray-500 block">{dayName}</span>
-                                                <div className="flex gap-1 mt-0.5">
-                                                    {log.flow && <span className="w-1.5 h-1.5 rounded-full bg-[#E84C7C]"></span>}
-                                                    {hasSymptoms && <span className="w-1.5 h-1.5 rounded-full bg-purple-400"></span>}
-                                                    {hasMood && <span className="w-1.5 h-1.5 rounded-full bg-orange-400"></span>}
-                                                </div>
-                                            </div>
-                                        </div>
-                                        <div className="text-right">
-                                            {log.flow && <span className="text-xs font-bold text-[#E84C7C] px-2 py-1">{log.flow}</span>}
-                                        </div>
-                                    </div>
-                                );
-                            })}
-                        </div>
-                    </div>
-                )) : (
-                    <p className="text-gray-400 text-sm text-center italic py-4">No history recorded yet.</p>
-                )}
-            </div>
         </div>
     );
   };
@@ -887,7 +870,7 @@ export default function App() {
         date: today, waterIntake: 0, waterTarget: waterTarget, sleepDuration: 0, sleepTarget: 480,
         flow: null, symptoms: [], detailedSymptoms: [], mood: [], medication: false, didExercise: false, habits: { smoked: false, drank: false } 
     };
-    return <DailyLogView log={log} onSave={saveLog} onClose={() => { setState(s => ({...s, view: 'HOME'})); triggerHaptic('light'); }} />;
+    return <DailyLogView log={log} onSaveLog={saveLog} onClose={() => { setState(s => ({...s, view: 'HOME'})); triggerHaptic('light'); }} />;
   };
 
   const renderMine = () => {
@@ -901,7 +884,9 @@ export default function App() {
   };
 
   return (
-    <div className={`max-w-md mx-auto h-[100dvh] relative shadow-2xl overflow-hidden flex flex-col transition-colors duration-300 bg-transparent`}>
+    // Updated container to use w-full md:max-w-md for better responsiveness on small screens
+    // Added overflow-hidden to root to prevent body scroll
+    <div className={`w-full md:max-w-md mx-auto h-[100dvh] relative shadow-2xl overflow-hidden flex flex-col transition-colors duration-300 bg-transparent`}>
       <main className="flex-1 overflow-hidden relative">
         {state.view === 'HOME' && renderHome()}
         {state.view === 'CALENDAR' && renderCalendar()}

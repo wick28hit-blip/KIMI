@@ -58,7 +58,6 @@ const BubbleDashboard: React.FC<DashboardProps> = ({ cycleData, user, dailyLog }
   const TipIcon = ICON_MAP[tip.icon] || Sparkles;
 
   // Analyze specific risk factors for display
-  // Updated Logic: Be more sensitive (>= 4) to capture moderate factors that contribute cumulatively
   const getRiskFactors = () => {
       if (!user?.pmsData) return [];
       const pms = user.pmsData;
@@ -68,12 +67,9 @@ const BubbleDashboard: React.FC<DashboardProps> = ({ cycleData, user, dailyLog }
         { label: 'Sleep Quality', impact: 'Hormonal imbalance', score: pms.sleep },
         { label: 'Anxiety', impact: 'Cycle irregularity', score: pms.anxiety },
         { label: 'Mood/Depression', impact: 'Luteal phase disruption', score: pms.depression },
-        // BMI is a calculated metric; treat <3 (underweight) or >7 (overweight) as factors on 0-10 normalized scale
         { label: 'BMI Factor', impact: 'Metabolic stress on cycle', score: (pms.bmi > 7 || pms.bmi < 3) ? pms.bmi : 0 }
       ];
 
-      // Filter for anything Moderate (4+) or higher
-      // Sort by severity (highest score first)
       const validFactors = allFactors
         .filter(f => f.score >= 4)
         .sort((a, b) => b.score - a.score);
@@ -106,10 +102,10 @@ const BubbleDashboard: React.FC<DashboardProps> = ({ cycleData, user, dailyLog }
             {phaseLabel}
         </div>
 
-        <div className="relative flex items-center justify-center mb-8">
+        <div className="relative flex items-center justify-center mb-8 w-full px-4">
             {/* Neumorphic Container for the Circle */}
-            <div className="neu-flat rounded-full p-4 flex items-center justify-center relative">
-                <svg height={size} width={size} className="rotate-[-90deg]">
+            <div className="neu-flat rounded-full p-4 flex items-center justify-center relative w-[260px] h-[260px] max-w-full aspect-square">
+                <svg viewBox={`0 0 ${size} ${size}`} className="rotate-[-90deg] w-full h-full">
                     <circle
                       stroke="currentColor" 
                       className="text-transparent"
@@ -119,14 +115,15 @@ const BubbleDashboard: React.FC<DashboardProps> = ({ cycleData, user, dailyLog }
                       cx={size / 2}
                       cy={size / 2}
                     />
-                     {/* Background Track */}
+                     {/* Background Track - Darkened for visibility */}
                     <circle
-                      stroke="#f3e6e9"
+                      stroke="#d8c5cd"
                       strokeWidth={strokeWidth}
                       fill="transparent"
                       r={radius}
                       cx={size / 2}
                       cy={size / 2}
+                      className="dark:stroke-gray-700"
                     />
                     <circle
                       stroke={ringColor}

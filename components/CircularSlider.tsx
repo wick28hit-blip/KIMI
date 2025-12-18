@@ -41,8 +41,13 @@ const CircularSlider: React.FC<CircularSliderProps> = ({
   const handleInteraction = (clientX: number, clientY: number) => {
     if (!svgRef.current) return;
     const rect = svgRef.current.getBoundingClientRect();
-    const x = clientX - rect.left - center;
-    const y = clientY - rect.top - center;
+    
+    // Scale logic handled by getBoundingClientRect, even if SVG is resized via CSS
+    const scaleX = size / rect.width;
+    const scaleY = size / rect.height;
+
+    const x = (clientX - rect.left) * scaleX - center;
+    const y = (clientY - rect.top) * scaleY - center;
 
     let angle = Math.atan2(y, x) * (180 / Math.PI);
     if (angle < 0) angle += 360;
@@ -128,16 +133,15 @@ const CircularSlider: React.FC<CircularSliderProps> = ({
   const maxLabelPos = angleToCoord(endAngle, labelRadius);
 
   return (
-    <div className="flex flex-col items-center select-none touch-none">
+    <div className="flex flex-col items-center select-none touch-none w-full">
         <h3 className="text-xl font-bold text-[#2D2D2D] dark:text-white mb-2">{label}</h3>
         <span className="text-5xl font-bold text-[#E84C7C] mb-8">{value}</span>
         
-        <div className="relative flex items-center justify-center" style={{ width: size, height: size }}>
+        <div className="relative flex items-center justify-center w-full max-w-[280px] aspect-square">
             <svg 
                 ref={svgRef}
-                width={size} 
-                height={size} 
-                className="cursor-pointer outline-none"
+                viewBox={`0 0 ${size} ${size}`}
+                className="cursor-pointer outline-none w-full h-full"
                 onMouseDown={handleMouseDown}
                 onTouchStart={handleTouchStart}
             >
@@ -157,15 +161,15 @@ const CircularSlider: React.FC<CircularSliderProps> = ({
                     </filter>
                 </defs>
 
-                {/* Background Track - Neumorphic Inset */}
+                {/* Background Track - Neumorphic Inset - Darkened */}
                 <path
                     d={`M ${startCoord.x} ${startCoord.y} A ${radius} ${radius} 0 ${largeArcFlag} 1 ${endCoord.x} ${endCoord.y}`}
                     fill="none"
-                    stroke="#F3F4F6"
+                    stroke="#D1D5DB"
                     strokeWidth={strokeWidth}
                     strokeLinecap="round"
                     filter="url(#trackInset)"
-                    className="dark:stroke-gray-800"
+                    className="dark:stroke-gray-700"
                 />
 
                 {/* Active Progress Track */}
@@ -196,8 +200,8 @@ const CircularSlider: React.FC<CircularSliderProps> = ({
             <div 
                 className="absolute text-xs font-bold text-gray-400 pointer-events-none"
                 style={{ 
-                    left: minLabelPos.x, 
-                    top: minLabelPos.y,
+                    left: `${(minLabelPos.x / size) * 100}%`, 
+                    top: `${(minLabelPos.y / size) * 100}%`,
                     transform: 'translate(-50%, -50%)'
                 }}
             >
@@ -206,8 +210,8 @@ const CircularSlider: React.FC<CircularSliderProps> = ({
              <div 
                 className="absolute text-xs font-bold text-gray-400 pointer-events-none"
                 style={{ 
-                    left: maxLabelPos.x, 
-                    top: maxLabelPos.y,
+                    left: `${(maxLabelPos.x / size) * 100}%`, 
+                    top: `${(maxLabelPos.y / size) * 100}%`,
                     transform: 'translate(-50%, -50%)'
                 }}
             >
